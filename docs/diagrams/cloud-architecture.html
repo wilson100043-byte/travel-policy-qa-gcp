@@ -12,7 +12,7 @@
   --node:#ffffff; --node-line:#c4cedb;
   --build:#7b61c9; --index:#c77d0a; --ask:#1a73e8; --sec:#0f8a5f; --plain:#6b7a8c;
   --warn-bg:#fff3e0; --warn-ink:#9a4d00; --tip-bg:#e8f5ee; --tip-ink:#11663f;
-  --badge:#e9eef5;
+  --badge:#e9eef5; --role:#1f5fbf;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -21,7 +21,7 @@
     --lane-build:#1d1a2e; --lane-index:#2a2216; --lane-ask:#14223a; --lane-ops:#142a22;
     --node:#1c2532; --node-line:#36445a;
     --build:#a593f0; --index:#f0a83a; --ask:#6aa6ff; --sec:#3fc28c; --plain:#8796a8;
-    --warn-bg:#3a2a12; --warn-ink:#ffc27a; --tip-bg:#12301f; --tip-ink:#7fdcaa; --badge:#263142;
+    --warn-bg:#3a2a12; --warn-ink:#ffc27a; --tip-bg:#12301f; --tip-ink:#7fdcaa; --badge:#263142; --role:#8ab4ff;
   }
 }
 :root[data-theme="dark"]{
@@ -30,7 +30,7 @@
   --lane-build:#1d1a2e; --lane-index:#2a2216; --lane-ask:#14223a; --lane-ops:#142a22;
   --node:#1c2532; --node-line:#36445a;
   --build:#a593f0; --index:#f0a83a; --ask:#6aa6ff; --sec:#3fc28c; --plain:#8796a8;
-  --warn-bg:#3a2a12; --warn-ink:#ffc27a; --tip-bg:#12301f; --tip-ink:#7fdcaa; --badge:#263142;
+  --warn-bg:#3a2a12; --warn-ink:#ffc27a; --tip-bg:#12301f; --tip-ink:#7fdcaa; --badge:#263142; --role:#8ab4ff;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -58,6 +58,7 @@ svg{display:block;width:100%;min-width:1100px;height:auto}
 .lane-label{font-size:14px;font-weight:800}
 .node rect.box{fill:var(--node);stroke:var(--node-line);stroke-width:1.4}
 .node .t{font-size:15.5px;font-weight:700;fill:var(--ink)}
+.node .r{font-size:12.5px;font-weight:700;fill:var(--role)}
 .node .l{font-size:12.5px;fill:var(--muted)}
 .node .l.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
 .badge rect{fill:var(--badge)}
@@ -132,6 +133,7 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
     <button class="flow-btn" data-flow="sec" aria-pressed="false" type="button"><i style="background:var(--sec)"></i>④ 身分與維運</button>
   </div>
   <div class="legend">
+    <span><b>藍色「負責」</b>：這個元件在系統裡做什麼</span>
     <span><b>①②③</b>：連線屬於哪一條流程，三條流程由上而下排列</span>
     <span><b>底部</b>：所有身分與權限（IAM）</span>
   </div>
@@ -281,33 +283,33 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
   ];
 
   const nodes = [
-    { id: "dev", x: 36, y: 120, w: 228, h: 110, badge: "CLI", title: "開發者電腦", flows: "build",
+    { id: "dev", x: 36, y: 120, w: 228, h: 125, badge: "CLI", title: "開發者電腦", role: "負責：開發與手動部署", flows: "build",
       lines: ["Terraform · gcloud CLI", "terraform apply 建立資源", "state 存於本機"] },
-    { id: "gh", x: 36, y: 270, w: 228, h: 110, badge: "GH", title: "GitHub + CI", flows: "build",
+    { id: "gh", x: 36, y: 285, w: 228, h: 125, badge: "GH", title: "GitHub + CI", role: "負責：版本控管與自動檢查", flows: "build",
       lines: ["push / PR：pytest", "Terraform 格式與語法檢查", "不含部署步驟"] },
-    { id: "admin", x: 36, y: 420, w: 228, h: 110, badge: "ADM", title: "管理部門", flows: "index sec",
+    { id: "admin", x: 36, y: 430, w: 228, h: 110, badge: "ADM", title: "管理部門", role: "負責：維護規定內容", flows: "index sec",
       lines: ["上傳、更新規定文件", "只能寫入 raw/"] },
-    { id: "browser", x: 36, y: 640, w: 228, h: 130, badge: "WEB", title: "員工瀏覽器", flows: "ask",
+    { id: "browser", x: 36, y: 640, w: 228, h: 130, badge: "WEB", title: "員工瀏覽器", role: "負責：提問與顯示答案", flows: "ask",
       lines: ["約 200 人，尖峰 25 人", "web/app.js（原生 JS）", "對話僅存於頁面"] },
-    { id: "cb", x: 340, y: 130, w: 270, h: 100, icon: "cloud_build", title: "Cloud Build", flows: "build",
+    { id: "cb", x: 340, y: 130, w: 270, h: 106, icon: "cloud_build", title: "Cloud Build", role: "負責：把程式打包成映像", flows: "build",
       lines: ["依 cloudbuild.yaml 建置映像", "未指定 _IMAGE_TAG 即中止"] },
-    { id: "ar", x: 680, y: 130, w: 270, h: 100, icon: "artifact_registry", title: "Artifact Registry", flows: "build",
+    { id: "ar", x: 680, y: 130, w: 270, h: 106, icon: "artifact_registry", title: "Artifact Registry", role: "負責：保存映像的每個版本", flows: "build",
       lines: ["repo：travel-policy-rag", "immutable tags，不可覆寫"] },
-    { id: "raw", x: 340, y: 330, w: 200, h: 150, icon: "cloud_storage", title: "Cloud Storage", flows: "index sec",
+    { id: "raw", x: 340, y: 330, w: 200, h: 150, icon: "cloud_storage", title: "Cloud Storage", role: "負責：存放原始規定", flows: "index sec",
       lines: ["raw/ 規定文件", "開啟版本保留", "改錯可以還原"] },
-    { id: "evwf", x: 590, y: 330, w: 230, h: 150, badge: "EV", title: "自動觸發", flows: "index",
+    { id: "evwf", x: 590, y: 330, w: 230, h: 150, badge: "EV", title: "自動觸發", role: "負責：上傳後自動建索引", flows: "index",
       lines: ["Eventarc 收到上傳事件", "Workflows 確認 raw/*.md", "啟動索引 Job"] },
-    { id: "job", x: 870, y: 320, w: 250, h: 200, icon: "cloud_run", title: "Cloud Run Job", flows: "build index sec",
+    { id: "job", x: 870, y: 320, w: 250, h: 200, icon: "cloud_run", title: "Cloud Run Job", role: "負責：把規定轉成索引", flows: "build index sec",
       lines: ["travel-policy-rag-index", "python -m app.indexer", "SA：travel-rag-indexer", "逾時 3600s · 重試 1 次", "1 vCPU · 1Gi"] },
-    { id: "proc", x: 1160, y: 330, w: 210, h: 150, icon: "cloud_storage", title: "Cloud Storage", flows: "index ask",
+    { id: "proc", x: 1160, y: 330, w: 210, h: 150, icon: "cloud_storage", title: "Cloud Storage", role: "負責：存放可搜尋的索引", flows: "index ask",
       lines: ["processed/index.json", "章節＋向量＋生效日", "與 raw/ 同一 bucket"] },
-    { id: "iap", x: 590, y: 650, w: 230, h: 140, badge: "IAP", title: "IAP 登入閘道", flows: "ask sec",
+    { id: "iap", x: 590, y: 650, w: 230, h: 140, badge: "IAP", title: "IAP 登入閘道", role: "負責：確認是公司員工", flows: "ask sec",
       lines: ["公司 Google 帳號登入", "強制兩步驟驗證", "不需 Load Balancer"] },
-    { id: "svc", x: 870, y: 630, w: 250, h: 240, icon: "cloud_run", title: "Cloud Run Service", flows: "build ask sec",
+    { id: "svc", x: 870, y: 630, w: 250, h: 240, icon: "cloud_run", title: "Cloud Run Service", role: "負責：網頁與問答 API", flows: "build ask sec",
       lines: ["FastAPI 服務 travel-policy-rag", "/api/ask · /api/health · 網頁", "SA：travel-rag-api", "實例 1–5 · 每個併發 10", "逾時 60s · 1 vCPU · 1Gi", "與 Job 共用同一映像"] },
-    { id: "vertex", x: 1416, y: 290, w: 248, h: 290, badge: "AI", title: "Vertex AI", flows: "index ask sec",
+    { id: "vertex", x: 1416, y: 290, w: 248, h: 290, badge: "AI", title: "Vertex AI", role: "負責：理解問題、生成答案", flows: "index ask sec",
       lines: ["以服務帳號呼叫，無 API key", "生成：gemini-3.5-flash-lite", "　區域 us（美國多區域）", "向量：gemini-embedding-001", "　區域 us-central1", "768 維 · 單次逾時 15s", "temperature 0.1", "只用官方確認可用的組合"] },
-    { id: "ops", x: 1416, y: 650, w: 248, h: 190, badge: "OPS", title: "監控與稽核", flows: "sec",
+    { id: "ops", x: 1416, y: 650, w: 248, h: 190, badge: "OPS", title: "監控與稽核", role: "負責：異常通知與存取紀錄", flows: "sec",
       lines: ["Cloud Monitoring 告警：", "回應 > 8s、5xx 錯誤、", "索引失敗 → 寄信通知", "Cloud Logging：", "記錄 IAP 存取", "不記錄提問內容"] },
     { id: "iam", x: 336, y: 956, w: 1328, h: 96, flows: "sec", columns: [
       ["員工群組 → IAP 存取角色", "IAP 服務代理 → run.invoker", "管理部門 → 只能寫 raw/"],
@@ -319,10 +321,10 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
   // Edge index is used by the tour: 0 git push, 1 dev→cb, 2 cb→ar, 3 ar→job, 4 admin→raw,
   // 5 raw→evwf, 6 evwf→job, 7 job→proc, 8 job→vertex, 9 proc→svc, 10 browser→iap, 11 iap→svc, 12 svc→vertex.
   const edges = [
-    { d: "M150,230 V270", label: "git push", lx: 192, ly: 250, flow: "build", color: C.plain },
+    { d: "M150,245 V285", label: "git push", lx: 192, ly: 265, flow: "build", color: C.plain },
     { d: "M264,175 H340", label: "① 提交", lx: 302, ly: 175, flow: "build", color: C.build },
     { d: "M610,180 H680", label: "① push", lx: 645, ly: 180, flow: "build", color: C.build },
-    { d: "M815,230 V265 H995 V320", label: "① 拉取映像（Service 共用）", lx: 905, ly: 265, flow: "build", color: C.build },
+    { d: "M815,236 V265 H995 V320", label: "① 拉取映像（Service 共用）", lx: 905, ly: 265, flow: "build", color: C.build },
     { d: "M264,450 H340", label: "② 上傳", lx: 302, ly: 450, flow: "index", color: C.index },
     { d: "M540,405 H590", label: "事件", lx: 565, ly: 405, flow: "index", color: C.index },
     { d: "M820,405 H870", label: "執行", lx: 845, ly: 405, flow: "index", color: C.index },
@@ -384,7 +386,9 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
       tx = n.x + 56;
     }
     text(g, tx, n.y + 32, n.title, "t");
-    n.lines.forEach((line, i) => text(g, tx, n.y + 56 + i * 18.5, line, isCode(line) ? "l code" : "l"));
+    if (n.role) text(g, tx, n.y + 53, n.role, "r");
+    const first = n.role ? 74 : 56;
+    n.lines.forEach((line, i) => text(g, tx, n.y + first + i * 18.5, line, isCode(line) ? "l code" : "l"));
   });
 
   const edgeLayer = el("g", {}, svg);
