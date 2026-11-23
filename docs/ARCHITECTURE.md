@@ -2,9 +2,9 @@
 
 這是面試實作測驗的**目標雲端架構圖**，尚未部署。程式另有預設離線的本機模式：直接讀取專案內的文件與索引，不呼叫圖中的 GCP 或 Gemini。文件與規定均自行編寫，不包含真實企業資料。
 
-![GCP 雲端架構圖](diagrams/cloud-architecture.png)
+![GCP 雲端架構圖：建置、索引、問答三條流程與 IAM 權限](diagrams/cloud-architecture.png)
 
-可放大觀看：[SVG](diagrams/cloud-architecture.svg) · [互動 HTML](diagrams/cloud-architecture.html) · [diagrams.net 可編輯檔](diagrams/cloud-architecture.drawio)。另有[詳細版架構圖](diagrams/cloud-architecture-detailed.html)，列出資源名稱、IAM 權限、各流程步驟與架構改進點。`.drawio` 可在免費的 diagrams.net 匯入後調整方塊和箭頭；圖檔可直接放進 GitHub README 或繳交郵件。
+互動版 [`cloud-architecture.html`](diagrams/cloud-architecture.html) 含逐步流程導覽，下載後以瀏覽器開啟。
 
 ## 用一句話說明
 
@@ -42,6 +42,6 @@
 
 ## 編輯與重產生
 
-主圖由 `diagrams/render_architecture.py` 定義版面並產生；同時輸出 `cloud-architecture.archify.json` 作為節點與連線的機器可讀摘要。執行 `python3 docs/diagrams/render_architecture.py` 可重產 SVG、HTML 與 `.drawio`。如果本機已有 Python Playwright 與 Chromium，還會產生 PNG；沒有時可直接使用 SVG。HTML 頁面可點選不同流程突出顯示對應連線。
+架構圖的來源是 `diagrams/cloud-architecture.html`，方塊、連線與流程導覽都定義在頁面內的 JavaScript。修改後執行 `python3 docs/diagrams/export_png.py`，會先檢查文字是否超出方塊，再匯出 2 倍解析度的 `cloud-architecture.png`（需要 Python Playwright 與 Chromium）。
 
-Cloud Storage、Cloud Run、Cloud Build、Artifact Registry 與 Secret Manager 的彩色 SVG 來自 [Google Cloud 官方圖示庫](https://cloud.google.com/icons)的 legacy set，檔案保存在 `docs/diagrams/icons/`；瀏覽器、GitHub、Terraform、proxy 與 Gemini 使用本專案繪製的輔助圖示。`.drawio` 中的方塊、箭頭與圖示都可在免費的 diagrams.net 編輯。
+Cloud Storage、Cloud Run、Cloud Build、Artifact Registry 與 Secret Manager 的圖示來自 [Google Cloud 官方圖示庫](https://cloud.google.com/icons)，已內嵌在 HTML 中。

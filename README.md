@@ -43,17 +43,11 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 ## 架構與技術選擇
 
-![GCP 雲端架構圖](docs/diagrams/cloud-architecture.png)
+![GCP 雲端架構圖：建置、索引、問答三條流程與 IAM 權限](docs/diagrams/cloud-architecture.png)
 
-[放大檢視 SVG](docs/diagrams/cloud-architecture.svg) · [可編輯的 diagrams.net 檔](docs/diagrams/cloud-architecture.drawio) · [架構說明](docs/ARCHITECTURE.md)
+圖中列出 Terraform 設定的實際資源名稱、service account、IAM 權限與執行規格。①②③ 分別對應建置映像、建立索引、使用者提問三條流程；虛線只在 `AI_MODE=gemini` 時發生。圖中內容都是設定，尚未在 GCP 上實際部署。
 
-### 詳細架構圖
-
-下圖列出 Terraform 設定的實際資源名稱、service account、IAM 權限與執行規格。①②③ 分別對應建置映像、建立索引、使用者提問三條流程；虛線只在 `AI_MODE=gemini` 時發生。圖中內容都是設定，尚未在 GCP 上實際部署。
-
-![詳細雲端架構圖：建置、索引、問答三條流程與 IAM 權限](docs/diagrams/cloud-architecture-detailed.png)
-
-互動版 [`docs/diagrams/cloud-architecture-detailed.html`](docs/diagrams/cloud-architecture-detailed.html) 含逐步流程導覽；GitHub 不會直接執行 HTML，請下載後以瀏覽器開啟。
+互動版 [`docs/diagrams/cloud-architecture.html`](docs/diagrams/cloud-architecture.html) 含逐步流程導覽；GitHub 不會直接執行 HTML，請下載後以瀏覽器開啟。各元件的選擇理由見[架構說明](docs/ARCHITECTURE.md)。
 
 下表依架構圖的三條流程整理各元件；雲端部分皆為 Terraform 設定，尚未部署。
 
@@ -106,7 +100,7 @@ GitHub Actions 在 push 與 Pull Request 時執行上述測試，以及 Terrafor
 │   ├── ARCHITECTURE.md   架構與服務選擇理由
 │   ├── DEPLOYMENT.md     部署步驟、權限與費用界線
 │   ├── PROJECT_PLAN.md   需求規格與驗證紀錄
-│   ├── diagrams/         架構圖（PNG、SVG、HTML、diagrams.net）與產生腳本
+│   ├── diagrams/         架構圖（PNG、互動 HTML）與 PNG 匯出腳本
 │   └── images/           本機執行畫面
 ├── .github/workflows/    CI：pytest 與 Terraform 靜態檢查
 ├── Dockerfile            Cloud Run 映像

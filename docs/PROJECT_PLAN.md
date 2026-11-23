@@ -2,7 +2,7 @@
 
 狀態：**本機版本已完成並驗證；雲端部署尚未驗證**。以既定雲端架構為目標，完成不呼叫雲端的本機版本；這次不部署、不執行 Terraform `apply`。所有規定都是自行編寫的假資料，不代表任何公司的真實制度。
 
-架構圖：[PNG](diagrams/cloud-architecture.png) · [SVG](diagrams/cloud-architecture.svg) · [可互動 HTML](diagrams/cloud-architecture.html) · [diagrams.net 可編輯檔](diagrams/cloud-architecture.drawio)；另有[白話架構說明](ARCHITECTURE.md)及[本機畫面](images/local-demo.png)。四份假文件與本機程式已建立；圖中雲端服務連線是預定設計，不代表已經部署或驗證雲端環境。
+架構圖：[PNG](diagrams/cloud-architecture.png) · [互動 HTML](diagrams/cloud-architecture.html)；另有[架構說明](ARCHITECTURE.md)及[本機畫面](images/local-demo.png)。四份虛構規定文件與本機程式已建立；圖中雲端服務連線是預定設計，不代表已經部署或驗證雲端環境。
 
 ## 目標與範圍（已確定）
 
