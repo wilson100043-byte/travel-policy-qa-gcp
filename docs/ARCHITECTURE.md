@@ -26,9 +26,11 @@
 
 ## 三條主要流程
 
-1. **建立索引：** 雲端規劃是將 GitHub 的假文件經 Terraform 上傳至 `raw/`，手動執行 Job，讀取文件、依 `##` 切小節、標記生效日期，呼叫 Gemini Embedding 後寫入 `processed/`。本機模式則直接讀 `policy_docs/`，在本機建立文字向量索引，完全不連線雲端。
-2. **問答：** 雲端規劃是使用者開啟 Cloud Run 網址、經 IAP 以 Google 帳號登入後呼叫私人 FastAPI，再使用現行索引與 Gemini 整理回答。本機模式直接開本機網頁，FastAPI 用近期對話輔助搜尋，從找到的三個現行小節抽取文字並附來源。找不到支持內容時，明說沒有資料。
-3. **建置：** Terraform 先建儲存與映像庫。使用者手動加入 API key，Cloud Build 建映像後，Terraform 再建 Service、Job 與權限。Job 手動執行一次，才有可供問答的索引。
+編號與架構圖的 ①②③ 一致。
+
+1. **① 建置映像：** Terraform 先建儲存空間與映像庫。（選用）手動把 API key 加入 Secret Manager；以 `gcloud builds submit` 交由 Cloud Build 建置映像後，Terraform 再建 Service、Job、IAP 與權限。
+2. **② 建立索引：** Terraform 把虛構規定上傳至 `raw/`；手動執行 Job，讀取文件、依 `##` 切小節、標記生效日期並建立向量（預設本機 TF-IDF，gemini 模式改用 Gemini Embedding），寫入 `processed/`。本機模式則直接讀 `policy_docs/`，完全不連線雲端。
+3. **③ 使用者提問：** 使用者開啟 Cloud Run 網址、經 IAP 以 Google 帳號登入後呼叫私人 FastAPI。FastAPI 以近期對話輔助搜尋，只在現行規定中找出最相關的三個小節，再抽取文字（gemini 模式改由 Gemini 生成）並附來源。找不到支持內容時，明說沒有資料。
 
 ## 安全與範圍
 

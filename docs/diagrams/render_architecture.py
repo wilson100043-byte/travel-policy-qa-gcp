@@ -40,14 +40,14 @@ COLORS = {
 NODES = [
     # id, x, y, width, height, icon, title, description lines, color
     ("browser", 70, 260, 290, 104, "browser", "使用者瀏覽器", ["載入前端；暫存近期對話"], "blue"),
-    ("proxy", 70, 405, 290, 104, "proxy", "IAP 登入閘道", ["Google 帳號登入後轉送"], "blue"),
     ("repo", 70, 620, 290, 104, "repo", "GitHub 儲存庫", ["程式碼 + 四份虛構規定"], "violet"),
     ("terraform", 70, 765, 290, 104, "terraform", "Terraform", ["建資源；上傳 raw/ 文件"], "violet"),
+    ("iap", 480, 290, 255, 124, "proxy", "IAP 登入閘道", ["Google 帳號登入", "僅授權名單可使用"], "blue"),
     ("service", 825, 280, 255, 140, "cloud_run", "Cloud Run\nservice", ["前端：HTML/CSS/JS", "API：FastAPI /api/ask"], "blue"),
     ("index", 1150, 284, 255, 124, "cloud_storage", "Cloud Storage", ["processed/ 索引 JSON", "章節、向量、生效日期"], "green"),
     ("raw", 500, 563, 255, 124, "cloud_storage", "Cloud Storage", ["raw/ 原始 Markdown", "四份虛構報帳規定"], "green"),
     ("job", 825, 563, 255, 124, "cloud_run", "Cloud Run Job", ["手動清理、切段", "建立文件向量索引"], "green"),
-    ("build", 500, 850, 255, 124, "cloud_build", "Cloud Build", ["從 GitHub 程式碼", "手動建置容器映像"], "violet"),
+    ("build", 500, 850, 255, 124, "cloud_build", "Cloud Build", ["gcloud builds submit", "手動建置容器映像"], "violet"),
     ("registry", 825, 850, 255, 124, "artifact_registry", "Artifact Registry", ["保存共用映像", "供 Service / Job 執行"], "violet"),
     ("secret", 1150, 850, 255, 124, "secret_manager", "Secret Manager", ["Gemini API key", "供 Service / Job 讀取"], "orange"),
     ("gemini", 1555, 500, 275, 204, "gemini", "Gemini\nDeveloper API", ["選用：Embedding", "追問改寫與答案生成", "本次未呼叫"], "optional"),
@@ -56,10 +56,10 @@ NODE_BY_ID = {node[0]: node for node in NODES}
 
 # Paths are intentionally routed through open corridors, away from service cards.
 EDGES = [
-    ("browser-proxy", "M 203 364 L 203 405", "blue", False, "browser", "proxy", "開啟網址／提問"),
-    ("proxy-browser", "M 286 405 L 286 364", "blue", False, "proxy", "browser", "前端／答案與來源"),
-    ("proxy-service", "M 360 452 L 409 452 L 409 344 L 825 344", "blue", False, "proxy", "service", "GET / · POST /api/ask"),
-    ("service-proxy", "M 825 393 L 440 393 L 440 476 L 360 476", "blue", False, "service", "proxy", "HTML/CSS/JS · 答案 JSON + 來源"),
+    ("browser-iap", "M 360 318 L 480 318", "blue", False, "browser", "iap", "提問"),
+    ("iap-browser", "M 480 352 L 360 352", "blue", False, "iap", "browser", "答案與來源"),
+    ("iap-service", "M 735 330 L 825 330", "blue", False, "iap", "service", "已驗證請求"),
+    ("service-iap", "M 825 375 L 735 375", "blue", False, "service", "iap", "頁面／答案 JSON"),
     ("service-index", "M 1080 345 L 1150 345", "blue", False, "service", "index", "搜尋現行索引"),
     ("index-service", "M 1150 386 L 1080 386", "green", False, "index", "service", "回傳相關小節"),
     ("repo-terraform", "M 215 724 L 215 765", "violet", True, "repo", "terraform", ""),
@@ -151,7 +151,7 @@ def make_svg() -> str:
            '<rect x="0" y="0" width="470" height="9" fill="#4285F4"/><rect x="470" y="0" width="470" height="9" fill="#EA4335"/><rect x="940" y="0" width="470" height="9" fill="#FBBC05"/><rect x="1410" y="0" width="470" height="9" fill="#34A853"/>',
            text(55, 57, "CLOUD SYSTEM DESIGN / RAG DEMO", "kicker"),
            text(55, 109, TITLE, "title"),
-           text(55, 142, "虛構企業文件 · 私人 Cloud Run · 手動索引 · 本機版已完成", "subtitle"),
+           text(55, 142, "虛構企業文件 · Cloud Run + IAP · 手動索引 · 本機版已完成", "subtitle"),
            '<rect x="1538" y="67" width="280" height="48" rx="24" fill="#FFF4E8" stroke="#EFCBA5"/>',
            text(1678, 98, "雲端規劃圖｜尚未部署", "boundary-title", 'text-anchor="middle" fill="#A56724"'),
            '<rect x="42" y="181" width="340" height="866" rx="23" fill="#FFFFFF" stroke="#DDE5EE" stroke-width="2"/>',
@@ -165,11 +165,11 @@ def make_svg() -> str:
            text(66, 597, "文件維護與部署", "boundary-title"),
            text(455, 205, "GOOGLE CLOUD PROJECT  ·  us-central1", "boundary-title"),
            text(1552, 497, "外部 AI 服務｜選用", "boundary-title"),
-           text(480, 257, "01  使用者提問與回答", "lane-title"),
-           text(480, 445, "前端與 API 同在 Cloud Run；回答和來源回傳瀏覽器", "lane-note"),
-           text(480, 542, "02  文件建立索引", "lane-title"),
+           text(480, 257, "③  使用者提問與回答", "lane-title"),
+           text(480, 445, "使用者經 IAP 以 Google 帳號登入；前端與 API 同在 Cloud Run", "lane-note"),
+           text(480, 542, "②  建立索引", "lane-title"),
            text(1107, 542, "raw/ + processed/：同一個私人 bucket", "lane-note"),
-           text(480, 832, "03  建置與金鑰", "lane-title"),
+           text(480, 832, "①  建置映像與金鑰", "lane-title"),
            text(1194, 832, "由 Terraform 建立資源", "lane-note"),
            '<rect x="1549" y="715" width="277" height="34" rx="12" fill="#F7F1FB"/>',
            text(1688, 737, "Gemini 模式需明確啟用", "lane-note", 'text-anchor="middle" fill="#83519E"')]
@@ -180,8 +180,9 @@ def make_svg() -> str:
         out.append(f'<g id="edge-{edge_id}" class="flow flow-{flow}"><path d="{path}" fill="none" stroke="{color}" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"{dash} marker-end="url(#arrow-{flow})"/></g>')
     # Labels are reserved for actions that cannot be read from the node names.
     for x, y, value, flow, width in [
-        (500, 305, "GET / · POST /api/ask", "blue", 205),
-        (505, 358, "回傳頁面／答案＋來源", "blue", 210),
+        (390, 282, "提問", "blue", 60),
+        (370, 362, "答案＋來源", "blue", 104),
+        (742, 290, "已驗證", "blue", 76),
         (1100, 413, "相關小節", "green", 99),
         (376, 665, "上傳文件", "violet", 92),
         (755, 581, "讀取", "green", 66),
@@ -190,12 +191,16 @@ def make_svg() -> str:
         (1268, 671, "文件 Embedding", "optional", 151),
         (760, 882, "推送", "violet", 60),
         (958, 761, "提供映像", "violet", 97),
-        (1112, 744, "注入 key", "orange", 88),
+        (1112, 744, "注入 key（Job、Service）", "orange", 190),
     ]:
         out.append(f'<g class="flow flow-{flow}">{pill(x, y, value, COLORS[flow], width)}</g>')
     for node in NODES:
         out.append(node_svg(node))
     out.extend([
+        '<rect x="70" y="405" width="290" height="104" rx="18" fill="#F4F7FB" stroke="#DCE5EF"/>',
+        text(92, 440, "使用方式", "boundary-title"),
+        text(92, 470, "開啟網址 → Google 帳號登入", "footer"),
+        text(92, 495, "不需安裝工具或執行指令", "footer"),
         '<rect x="69" y="903" width="286" height="111" rx="17" fill="#F4F7FB" stroke="#DCE5EF"/>',
         text(92, 936, "這張圖如何解讀", "boundary-title"),
         text(92, 970, "實線：問答與資料路徑", "footer"),
@@ -204,8 +209,9 @@ def make_svg() -> str:
         text(1553, 840, "目前的驗證範圍", "boundary-title"),
         text(1553, 874, "本機：FastAPI + 文字向量", "footer"),
         text(1553, 902, "文件與索引：本機檔案", "footer"),
-        text(1553, 930, "GCP、Gemini：未部署 / 呼叫", "footer"),
-        text(1553, 972, "無付費雲端資源", "footer"),
+        text(1553, 930, "Terraform：fmt、validate 通過", "footer"),
+        text(1553, 958, "GCP、Gemini：未部署 / 呼叫", "footer"),
+        text(1553, 986, "無付費雲端資源", "footer"),
         '<line x1="55" y1="1074" x2="1825" y2="1074" stroke="#D7E0E9"/>',
         text(55, 1112, "儲存：raw/ 與 processed/ 是同一個 Cloud Storage bucket 的兩個路徑。", "footer"),
         text(1120, 1112, "部署：bootstrap → 建映像 → app → 手動執行 Job。", "footer"),
@@ -260,7 +266,7 @@ def make_semantic_spec() -> dict:
     """Keep a small machine-readable component map beside the visual source."""
     types = {
         "repo": "external", "terraform": "external", "browser": "frontend",
-        "proxy": "security", "raw": "database", "job": "backend",
+        "iap": "security", "raw": "database", "job": "backend",
         "index": "database", "service": "backend", "build": "cloud",
         "registry": "cloud", "secret": "security", "gemini": "external",
     }
@@ -283,7 +289,7 @@ def make_semantic_spec() -> dict:
         "meta": {"title": TITLE, "quality_profile": "showcase", "viewBox": [WIDTH, HEIGHT]},
         "components": components,
         "boundaries": [{"kind": "region", "label": "Google Cloud · us-central1",
-                        "wraps": ["raw", "job", "index", "service", "build", "registry", "secret"], "pad": 25}],
+                        "wraps": ["iap", "raw", "job", "index", "service", "build", "registry", "secret"], "pad": 25}],
         "connections": connections,
     }
 

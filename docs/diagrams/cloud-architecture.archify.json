@@ -25,20 +25,6 @@
       ]
     },
     {
-      "id": "proxy",
-      "type": "security",
-      "label": "IAP 登入閘道",
-      "sublabel": "Google 帳號登入後轉送",
-      "pos": [
-        70,
-        405
-      ],
-      "size": [
-        290,
-        104
-      ]
-    },
-    {
       "id": "repo",
       "type": "external",
       "label": "GitHub 儲存庫",
@@ -64,6 +50,20 @@
       "size": [
         290,
         104
+      ]
+    },
+    {
+      "id": "iap",
+      "type": "security",
+      "label": "IAP 登入閘道",
+      "sublabel": "Google 帳號登入；僅授權名單可使用",
+      "pos": [
+        480,
+        290
+      ],
+      "size": [
+        255,
+        124
       ]
     },
     {
@@ -126,7 +126,7 @@
       "id": "build",
       "type": "cloud",
       "label": "Cloud Build",
-      "sublabel": "從 GitHub 程式碼；手動建置容器映像",
+      "sublabel": "gcloud builds submit；手動建置容器映像",
       "pos": [
         500,
         850
@@ -184,6 +184,7 @@
       "kind": "region",
       "label": "Google Cloud · us-central1",
       "wraps": [
+        "iap",
         "raw",
         "job",
         "index",
@@ -197,28 +198,28 @@
   ],
   "connections": [
     {
-      "id": "browser_proxy",
+      "id": "browser_iap",
       "from": "browser",
-      "to": "proxy",
-      "label": "開啟網址／提問"
+      "to": "iap",
+      "label": "提問"
     },
     {
-      "id": "proxy_browser",
-      "from": "proxy",
+      "id": "iap_browser",
+      "from": "iap",
       "to": "browser",
-      "label": "前端／答案與來源"
+      "label": "答案與來源"
     },
     {
-      "id": "proxy_service",
-      "from": "proxy",
+      "id": "iap_service",
+      "from": "iap",
       "to": "service",
-      "label": "GET / · POST /api/ask"
+      "label": "已驗證請求"
     },
     {
-      "id": "service_proxy",
+      "id": "service_iap",
       "from": "service",
-      "to": "proxy",
-      "label": "HTML/CSS/JS · 答案 JSON + 來源"
+      "to": "iap",
+      "label": "頁面／答案 JSON"
     },
     {
       "id": "service_index",

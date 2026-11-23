@@ -56,17 +56,22 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 互動版 [`docs/diagrams/cloud-architecture-detailed.html`](docs/diagrams/cloud-architecture-detailed.html) 含逐步流程導覽；GitHub 不會直接執行 HTML，請下載後以瀏覽器開啟。
 
-| 類別 | 技術及用途 |
-| --- | --- |
-| 產品形式 | 單頁內部文件問答示範；本機可直接執行。 |
-| 前端 | 原生 HTML、CSS、JavaScript；送出問題、顯示回答與來源，不需建置工具。 |
-| 後端 | Python FastAPI 提供網頁與 `/api/ask`；Uvicorn 啟動 HTTP 服務。 |
-| 文件與索引 | Markdown 保存虛構規定；本機索引檔保存章節與文字向量。GCP 規劃改由 Cloud Storage 的 `raw/`、`processed/` 保存。 |
-| 搜尋與 AI | 本機模式用文字向量相似度找小節，零外部呼叫；選用 Gemini Developer API 做 Embedding、追問改寫及生成回答。 |
-| 雲端執行 | Terraform 規劃 Cloud Run service（以 IAP 驗證 Google 帳號登入）、手動 Cloud Run Job、Cloud Build、Artifact Registry、Secret Manager。尚未部署。 |
-| 測試 | pytest 驗證文件處理、版本過濾、索引快取與 API；httpx 用來在測試中呼叫 FastAPI。 |
+下表依架構圖的三條流程整理各元件；雲端部分皆為 Terraform 設定，尚未部署。
 
-使用同一個 Cloud Storage bucket 的兩個路徑，是因為這個示範只有少量文件與章節；不需要為了小型資料量另外維護資料庫或向量服務。雲端服務保持私人存取，API key 不寫入 GitHub 或 Terraform state。這些都是設計目標，雲端設定是否可成功套用尚未實測。
+| 流程 | 元件 | 用途與選擇理由 |
+| --- | --- | --- |
+| ③ 使用者提問 | 前端（原生 HTML、CSS、JavaScript） | 送出問題、顯示回答與來源；單一頁面，不需建置工具。 |
+| ③ 使用者提問 | IAP 登入閘道 | 使用者開啟網址並以 Google 帳號登入，只有授權名單可使用；直接啟用於 Cloud Run，不需 Load Balancer。 |
+| ③ 使用者提問 | Cloud Run Service（FastAPI） | 同時提供網頁與 `/api/ask`；閒置時縮到 0 個實例，最多 1 個。 |
+| ② 建立索引 | Cloud Storage | 同一個私人 bucket：`raw/` 放原始 Markdown，`processed/` 放索引 JSON；資料量小，不另設資料庫。 |
+| ② 建立索引 | Cloud Run Job | 手動觸發，依 `##` 切分章節並建立向量索引；文件處理不需常駐運作。 |
+| ② ③ 選用 | Gemini Developer API | `AI_MODE=gemini` 時才使用，負責 Embedding、追問改寫與生成回答；預設 offline 模式改用本機 TF-IDF，零外部呼叫。 |
+| ① 建置映像 | Cloud Build、Artifact Registry | 以 `gcloud builds submit` 手動建置映像；Job 與 Service 共用同一映像，tag 不可覆寫。 |
+| ① 建置映像 | Secret Manager | 保存 Gemini API key，僅 gemini 模式注入 Job 與 Service；金鑰不進 Git 或 Terraform state。 |
+| 基礎設施 | Terraform | 分 `bootstrap` 與 `app` 兩階段建立資源；Service 與 Job 各用獨立 service account。 |
+| 品質檢查 | pytest、GitHub Actions | 測試文件處理、版本過濾、索引快取與 API；CI 另執行 Terraform `fmt` 與 `validate`，不含部署。 |
+
+雲端設定已通過 Terraform `fmt` 與 `validate` 靜態檢查，但尚未實際套用到 GCP。
 
 ## 測試
 
