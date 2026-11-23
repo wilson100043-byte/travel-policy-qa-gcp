@@ -1,20 +1,26 @@
-# 部署與費用界線
+# 部署步驟與權限設計
 
-目前只交付可審查的 Terraform 與本機程式；**本專案沒有執行任何 `terraform apply`、Cloud Build、Cloud Run Job，也沒有建立 GCP 資源。**下方雲端命令是日後由持有者自行評估費用後使用的操作範例，不是零費用承諾。即使服務能縮到 0，Cloud Storage、Secret Manager、Artifact Registry、Cloud Build、Cloud Logging 和 API 呼叫仍可能產生用量或費用。若要求「不產生任何帳單」，請停在本機執行與靜態檢查。
+本專案只交付可審查的 Terraform 與本機程式，**沒有執行任何 `terraform apply`、Cloud Build 或 Cloud Run，也沒有建立 GCP 資源。**下列步驟說明日後在公司專案部署時的順序；設計依據見[需求規格](REQUIREMENTS.md)。
+
+## 前提
+
+- 公司使用 Google Workspace，GCP 專案屬於公司的 Google Cloud 組織。這樣 IAP 可以使用 Google 管理的 OAuth client，員工以公司帳號登入，不需手動建立 OAuth 設定。
+- 在 Google Workspace 管理控制台**強制所有員工開啟兩步驟驗證**（NFR-7）。這是 Workspace 的帳號政策，不由 Terraform 管理。
+- **確認 Vertex AI 模型的提供區域。**設計時官方的區域表格沒有明確列出台灣（asia-east1）可用的 Gemini 與 Embedding 模型。部署前請在 Vertex AI 的區域頁面或 Model Garden 確認；若台灣沒有提供，改用最近、且提供資料落地承諾的區域，並將 `vertex_location` 設為該區域。文件、索引與執行環境仍留在台灣，只有 AI 推論的處理地點不同。不要使用 `global` 端點，它不保證資料處理地點。
 
 ## 對應架構
 
-| 階段 | Terraform 內容 | 執行後的資料 |
+| 階段 | Terraform 內容 | 執行後的狀態 |
 | --- | --- | --- |
-| `infra/bootstrap` | 啟用必要 API、私人 Cloud Storage bucket、上傳 `policy_docs/*.md` 至 `raw/`、建立 Artifact Registry Docker repository、建立**沒有版本或值**的 Secret Manager secret。 | `raw/*.md`，尚無 `processed/index.json`。 |
-| 手動準備 | 把自己的 Gemini API key 以標準輸入加入 Secret Manager；Cloud Build 將同一份 Docker image 推到 Artifact Registry。 | Terraform state、Git 和映像都不保存 API key。 |
-| `infra/app` | 兩個各自的 runtime service account、bucket/secret 的 IAM 權限、啟用 IAP 的私人 Cloud Run service、IAP 使用者授權、手動 Cloud Run Job。 | Job 執行後才有 `processed/index.json`，Service 才能查詢。 |
-
-`app` 的 `ai_mode` 預設是 `offline`，不設定 Gemini key、不呼叫遠端 AI。若要開啟 Gemini，需同時把 `ai_mode` 改為 `gemini`、`gemini_free_tier_confirmed` 設為 `true`，而且 Secret Manager 中要先有可用版本。這是程式內的操作護欄，**不能證明 GCP 或 Gemini 不收費**。
+| `infra/bootstrap` | 啟用必要 API；建立私人 Cloud Storage bucket（開啟版本保留）；建立 Artifact Registry Docker repository。 | bucket 是空的，尚未有規定文件與索引。 |
+| 手動準備 | Cloud Build 建置映像並推送到 Artifact Registry。 | 映像就緒。 |
+| `infra/app` `main.tf` | 服務帳號與權限、啟用 IAP 的 Cloud Run Service、Cloud Run Job、管理部門的上傳權限。 | 服務上線，但還沒有索引。 |
+| `infra/app` `reindex.tf` | Eventarc 觸發器與 Workflows：`raw/` 有新的 `.md` 檔時自動執行 Job。 | 上傳規定後自動產生索引。 |
+| `infra/app` `monitoring.tf` | 回應過慢、伺服器錯誤、索引失敗三個告警，以及 IAP 存取稽核記錄。 | 異常時寄信通知系統管理者。 |
 
 ## 不連接雲端的檢查
 
-需要本機 Terraform CLI；以下指令只下載 Terraform provider 並檢查設定，不讀取 GCP 帳戶、不建立資源：
+以下指令只下載 Terraform provider 並檢查設定，不讀取 GCP 帳戶、不建立資源。GitHub Actions 每次 push 也會執行相同檢查。
 
 ```sh
 terraform fmt -check -recursive infra
@@ -24,82 +30,87 @@ terraform -chdir=infra/app init -backend=false -input=false
 terraform -chdir=infra/app validate -no-color
 ```
 
-GitHub Actions 的 CI 也只做 Python 測試、Terraform `fmt` 和 `validate`；沒有 GCP 憑證、`plan`、`apply`、Cloud Build 或部署權限。依 [GitHub Actions 計費規則](https://docs.github.com/en/actions/concepts/billing-and-usage)，公開儲存庫的標準 runner 免費，但私人儲存庫超過內含時數可能計費。因此 workflow 在**私人儲存庫會跳過兩個 job**；先在本機執行檢查，只有公開儲存庫才自動跑 CI。
+## 部署順序
 
-## 只有自行決定部署後才使用的步驟
+> 以下指令會建立雲端資源並產生費用，本專案沒有執行。
 
-1. 準備**獨立測試專案**、檢查其帳單狀態與 GCP/AI Studio 免費用量規則，並知道停止、刪除資源的方法。免費用量不是「絕不計費」開關。Terraform 目前使用本機 state；`*.tfstate` 和 `*.tfvars` 已列入 `.gitignore`，也不要分享這些檔案。
-2. 複製 `infra/bootstrap/terraform.tfvars.example` 為 `infra/bootstrap/terraform.tfvars`，填入既有 `project_id` 和全球唯一的 `bucket_name`。四份假政策應已存在於 `policy_docs/`。
-3. 初始化並套用 bootstrap。**下列操作會修改雲端資源，現在不要執行：**
+1. 複製 `infra/bootstrap/terraform.tfvars.example` 為 `terraform.tfvars`，填入專案 ID 與全球唯一的 bucket 名稱，然後套用：
 
    ```sh
    terraform -chdir=infra/bootstrap init
-   terraform -chdir=infra/bootstrap plan
    terraform -chdir=infra/bootstrap apply
    ```
 
-4. 查詢此專案實際的 Cloud Build 執行身分；新舊 GCP 專案可能使用不同的預設 service account。把查到的 email 放進 bootstrap 的 `cloud_build_service_account_email`，再檢查並套用 bootstrap，使它取得**該 repository** 的 Artifact Registry writer 權限。若專案原有額外組織限制，應按限制調整建置身分。
+2. 查詢專案實際的 Cloud Build 執行身分，填入 `cloud_build_service_account_email` 後再套用一次 bootstrap，讓它取得這個 repository 的寫入權限：
 
    ```sh
-   gcloud builds get-default-service-account --project=YOUR_GCP_PROJECT_ID --region=us-central1
-   terraform -chdir=infra/bootstrap plan
-   terraform -chdir=infra/bootstrap apply
+   gcloud builds get-default-service-account --project=YOUR_GCP_PROJECT_ID --region=asia-east1
    ```
 
-5. Gemini 模式才需要加入 Secret Manager secret version。不要把 key 放在 `.tfvars`、GitHub Actions secret、指令參數、Docker build argument、一般文件或程式碼。以下在終端機隱藏輸入，透過標準輸入傳給 `gcloud`；本機 shell 變數在該終端機關閉後消失。
+3. 用唯一的 tag 建置映像。`.gcloudignore` 會排除 `.env*`、Terraform state 與虛擬環境；映像 tag 不可覆寫：
 
    ```sh
-   read -r -s GEMINI_API_KEY
-   printf '%s' "$GEMINI_API_KEY" | gcloud secrets versions add travel-rag-gemini-api-key \
-     --project=YOUR_GCP_PROJECT_ID --data-file=-
-   unset GEMINI_API_KEY
+   gcloud builds submit . --config=cloudbuild.yaml --region=asia-east1 \
+     --project=YOUR_GCP_PROJECT_ID --substitutions=_IMAGE_TAG=YOUR_UNIQUE_TAG
    ```
 
-6. 確認工作區沒有真實公司資料或本機 key，選一個唯一 image tag，才手動建置。根目錄 `.gcloudignore` 排除 `.env*`、Terraform state、虛擬環境與本機索引；可以先用 `gcloud meta list-files-for-upload` 在本機檢查實際會上傳的檔案。`cloudbuild.yaml` 只建置和推送映像；不傳入 Gemini key。Artifact Registry 的 immutable tags 防止同名標籤被覆蓋。`gcloud builds submit` 本身會上傳本機來源並可能產生 Cloud Build 用量。
-
-   ```sh
-   gcloud builds submit . --config=cloudbuild.yaml --region=us-central1 \
-     --project=YOUR_GCP_PROJECT_ID \
-     --substitutions=_IMAGE_TAG=YOUR_UNIQUE_TAG
-   ```
-
-   映像路徑為 `us-central1-docker.pkg.dev/PROJECT_ID/travel-policy-rag/app:YOUR_UNIQUE_TAG`。如果 build identity 缺少 staging bucket 或 Logging 權限，先依錯誤訊息修正該專案的 build IAM；不要改成給所有 service account 專案層級 Editor 權限。
-
-7. **IAP 首次設定。**服務以 IAP（Identity-Aware Proxy，Google 帳號登入閘道）保護，使用者開啟網址並以 Google 帳號登入後才能使用。依官方文件，若專案**不屬於任何 Google Cloud 組織**（例如個人帳號建立的專案），無法以程式建立 OAuth client，第一次啟用 IAP 須先在 Cloud Run Console 完成設定；要讓組織外帳號（例如一般 Gmail）登入時，OAuth 同意畫面須設為「外部」類型，並使用自訂 OAuth client。屬於組織的專案則可使用 Google 管理的 OAuth client，但只涵蓋組織內帳號。
-
-8. 複製 `infra/app/terraform.tfvars.example` 為 `infra/app/terraform.tfvars`，填入同一個專案、bucket 和實際 image URI。`authorized_users` 填入可以登入使用網頁的帳號（`user:email` 或 `group:email`），`authorized_job_executors` 填入可以執行索引 Job 的帳號。如果要遠端 Gemini，確認 AI Studio Free Tier 專案與 key 後才設 `ai_mode = "gemini"`、`gemini_free_tier_confirmed = true`。接著手動套用：
+4. 複製 `infra/app/terraform.tfvars.example` 為 `terraform.tfvars`，填入映像路徑、員工群組（`authorized_users`）、管理部門群組（`policy_admins`）、維運人員（`authorized_job_executors`）與告警信箱（`alert_email`），然後套用：
 
    ```sh
    terraform -chdir=infra/app init
-   terraform -chdir=infra/app plan
    terraform -chdir=infra/app apply
    ```
 
-9. 手動執行一次索引 Job；更新假文件後也要重跑 bootstrap 上傳及 Job。Job 不排程、不自動執行。
+5. 管理部門上傳規定文件到 `raw/`。上傳完成後，Eventarc 會啟動 Workflows，再由 Workflows 執行索引 Job：
 
    ```sh
-   gcloud run jobs execute travel-policy-rag-index --region=us-central1 \
-     --project=YOUR_GCP_PROJECT_ID --wait
+   gcloud storage cp policy_docs/*.md gs://YOUR_BUCKET/raw/
    ```
 
-10. 用瀏覽器開啟 `terraform -chdir=infra/app output service_url` 顯示的網址，以 `authorized_users` 中的 Google 帳號登入即可使用；使用者不需要安裝 gcloud 或執行任何指令。未列入名單的帳號會被 IAP 拒絕，請求不會進入應用程式。
+6. 員工用瀏覽器開啟 `terraform -chdir=infra/app output service_url` 顯示的網址，以公司帳號登入即可使用，不需要安裝任何工具。
 
-    `gcloud run services proxy` 在啟用 IAP 後是否仍可使用，官方文件沒有說明，本專案不以它作為存取方式。
+更新映像後，可由維運人員手動執行一次索引 Job，確保索引與新程式相容：
 
-## 權限與資料範圍
+```sh
+gcloud run jobs execute travel-policy-rag-index --region=asia-east1 --project=YOUR_GCP_PROJECT_ID
+```
 
-- Cloud Run service 與 Job 各用獨立 service account；兩者只有私人 bucket 的 object viewer 權限。
-- Job 額外有一筆帶條件的 object admin 權限，只能替換 `processed/` 物件。由於 Cloud Storage 的 object listing 在 bucket 層級授權，Job 仍能列出 bucket 內物件；此限制已在設計中明示。
-- `ai_mode = "gemini"` 時，兩個 runtime service account 才取得對**單一 secret** 的 accessor 權限，Cloud Run 只引用 `latest` 版本。Terraform 只管理 secret 空殼與 IAM，不管理 secret value/version。
-- 使用者透過 IAP 登入：`authorized_users` 取得 `roles/iap.httpsResourceAccessor`；Cloud Run Invoker 只授予 IAP 的 service agent（`service-PROJECT_NUMBER@gcp-sa-iap.iam.gserviceaccount.com`），使用者本身不直接持有 Invoker。Terraform 沒有授予 `allUsers` 或 `allAuthenticatedUsers`。
-- IAP 直接啟用於 Cloud Run，保護預設的 `run.app` 網址，不需要建立 Load Balancer。`INGRESS_TRAFFIC_ALL` 讓瀏覽器能連到 `run.app` 網址，存取權由 IAP 控制。
-- Bucket 啟用 uniform bucket-level access、public access prevention，並關閉 Cloud Storage 預設 7 天 soft delete，避免每次覆寫假資料後保留舊物件。這些設定是測試資料的取捨；真實公司文件需要重新設計保存政策。
+## 權限設計
+
+| 身分 | 權限 | 目的 |
+| --- | --- | --- |
+| 員工群組 | IAP `roles/iap.httpsResourceAccessor` | 登入使用網頁；不能存取 bucket 或其他資源。 |
+| IAP 服務代理 | Cloud Run `roles/run.invoker` | IAP 驗證身分後，代替使用者呼叫 Service；使用者本身沒有 Invoker 權限。 |
+| 管理部門群組 | bucket `objectViewer`；`objectAdmin`，條件限定 `raw/` | 瀏覽並上傳、更新規定文件。 |
+| `travel-rag-api` | bucket `objectViewer`；專案 `roles/aiplatform.user` | Service 讀取索引、呼叫 Vertex AI。 |
+| `travel-rag-indexer` | bucket `objectViewer`；`objectAdmin`，條件限定 `processed/`；專案 `roles/aiplatform.user` | Job 讀取規定、寫入索引、呼叫 Embedding。 |
+| `travel-rag-reindex` | `eventarc.eventReceiver`、`workflows.invoker`、`logging.logWriter`；Job 的 `run.jobsExecutor` | 接收上傳事件，只能啟動這一個 Job。 |
+| Cloud Storage 服務代理 | `roles/pubsub.publisher` | 將上傳事件送給 Eventarc。 |
+| 維運人員 | Job 的 `run.jobsExecutor` | 必要時手動重建索引。 |
+
+- 沒有任何身分使用長期 API key；Service 與 Job 以服務帳號呼叫 Vertex AI（NFR-9）。
+- 沒有授予 `allUsers` 或 `allAuthenticatedUsers`。
+- Cloud Storage 的列出物件權限在 bucket 層級授權，所以管理部門與 Job 都看得到 bucket 內所有檔名，但只能修改各自的路徑。
+
+## 資料保存與稽核
+
+- **版本保留**：bucket 開啟物件版本，每個檔案保留最近 10 個舊版本，規定改錯時可以還原（NFR-12）。
+- **存取記錄**：開啟 IAP 的 Data Access 稽核記錄，記錄誰在何時進入系統（NFR-11）。
+- **不記錄提問內容**：程式不寫入提問文字；Cloud Run 的請求記錄只包含網址路徑，例如 `POST /api/ask`。
+
+## 已知限制
+
+- 自動重建索引：短時間內上傳多個檔案時，每個檔案都會啟動一次 Job。Job 每次都重建完整索引，結果一致，但會重複執行。
+- 告警門檻：Cloud Monitoring 沒有第 90 百分位的對齊器，回應時間告警使用第 95 百分位、門檻 8 秒，比需求略嚴格。
+- 以上設定都只通過 Terraform 靜態檢查，IAM、Eventarc 與告警的實際行為尚未在 GCP 上驗證。
 
 ## 來源
 
 - [Cloud Run 直接啟用 IAP](https://docs.cloud.google.com/run/docs/securing/identity-aware-proxy-cloud-run)
 - [IAP for Cloud Run 的 OAuth 與組織限制](https://docs.cloud.google.com/iap/docs/enabling-cloud-run)
-- [Cloud Build 預設 service account 可能不同](https://docs.cloud.google.com/build/docs/cloud-build-service-account-updates)
+- [用 Eventarc 與 Workflows 執行 Cloud Run Job](https://docs.cloud.google.com/workflows/docs/tutorials/execute-cloud-run-jobs)
+- [Eventarc 支援的區域](https://docs.cloud.google.com/eventarc/docs/locations)
+- [Workflows 支援的區域](https://docs.cloud.google.com/workflows/docs/locations)
+- [Vertex AI 生成式 AI 的區域](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/learn/locations)
+- [Vertex AI 資料落地](https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/data-residency)
 - [Cloud Storage IAM 條件與 object listing 限制](https://docs.cloud.google.com/storage/docs/access-control/iam)
-- [Cloud Storage objectCreator 無法覆寫](https://docs.cloud.google.com/storage/docs/access-control/iam-roles)
-- [Cloud Run 的 Secret Manager 設定](https://docs.cloud.google.com/run/docs/configuring/services/secrets)

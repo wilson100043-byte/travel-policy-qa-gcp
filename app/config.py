@@ -18,18 +18,20 @@ class Settings:
     gcs_bucket: str
     gcs_raw_prefix: str
     gcs_processed_object: str
-    gemini_api_key: str
-    free_tier_confirmed: bool
-    gemini_generation_model: str
-    gemini_embedding_model: str
+    gcp_project: str
+    vertex_location: str
+    generation_model: str
+    embedding_model: str
 
 
 def load_settings() -> Settings:
+    # Local runs default to offline so tests and reviewers need no cloud account.
+    # The Cloud Run deployment sets AI_MODE=vertex explicitly.
     ai_mode = os.getenv("AI_MODE", "local").strip().lower()
     if ai_mode == "offline":
         ai_mode = "local"
-    if ai_mode not in {"local", "gemini"}:
-        raise ValueError("AI_MODE must be local or gemini")
+    if ai_mode not in {"local", "vertex"}:
+        raise ValueError("AI_MODE must be local or vertex")
     storage_mode = os.getenv("STORAGE_MODE", "local").strip().lower()
     if storage_mode not in {"local", "gcs"}:
         raise ValueError("STORAGE_MODE must be local or gcs")
@@ -42,17 +44,17 @@ def load_settings() -> Settings:
         gcs_bucket=os.getenv("GCS_BUCKET", "").strip(),
         gcs_raw_prefix=os.getenv("GCS_RAW_PREFIX", "raw/").strip("/") + "/",
         gcs_processed_object=os.getenv("GCS_PROCESSED_OBJECT", "processed/index.json").strip("/"),
-        gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
-        free_tier_confirmed=os.getenv("GEMINI_FREE_TIER_CONFIRMED", "").strip().lower() in {"1", "true", "yes"},
-        gemini_generation_model=os.getenv("GEMINI_GENERATION_MODEL", "gemini-3.1-flash-lite"),
-        gemini_embedding_model=os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001"),
+        gcp_project=os.getenv("GOOGLE_CLOUD_PROJECT", "").strip(),
+        vertex_location=os.getenv("VERTEX_LOCATION", "asia-east1").strip(),
+        generation_model=os.getenv("VERTEX_GENERATION_MODEL", "gemini-2.5-flash-lite"),
+        embedding_model=os.getenv("VERTEX_EMBEDDING_MODEL", "gemini-embedding-001"),
     )
 
 
-def require_gemini_opt_in(settings: Settings) -> None:
-    if settings.ai_mode != "gemini":
-        raise ValueError("Gemini calls require AI_MODE=gemini")
-    if not settings.gemini_api_key:
-        raise ValueError("Gemini mode needs GEMINI_API_KEY")
-    if not settings.free_tier_confirmed:
-        raise ValueError("Gemini mode needs GEMINI_FREE_TIER_CONFIRMED=1 after checking account billing status")
+def require_vertex(settings: Settings) -> None:
+    if settings.ai_mode != "vertex":
+        raise ValueError("Vertex AI calls require AI_MODE=vertex")
+    if not settings.gcp_project:
+        raise ValueError("Vertex AI mode needs GOOGLE_CLOUD_PROJECT")
+    if not settings.vertex_location:
+        raise ValueError("Vertex AI mode needs VERTEX_LOCATION")

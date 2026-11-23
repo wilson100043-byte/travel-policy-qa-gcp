@@ -7,7 +7,8 @@
 <style>
 :root{
   --bg:#f5f7fa; --panel:#ffffff; --ink:#19273a; --muted:#5f7084; --line:#d5dce6;
-  --zone:#eef2f7; --zone-gcp:#eaf2fe; --zone-gcp-line:#8ab4f8; --zone-ext:#fbf4e8; --zone-ext-line:#e0b25c;
+  --zone:#eef2f7; --zone-gcp:#eaf2fe; --zone-gcp-line:#8ab4f8;
+  --lane-build:#f3f0fb; --lane-index:#fbf5ea; --lane-ask:#eef4fd; --lane-ops:#eef6f2;
   --node:#ffffff; --node-line:#c4cedb;
   --build:#7b61c9; --index:#c77d0a; --ask:#1a73e8; --sec:#0f8a5f; --plain:#6b7a8c;
   --warn-bg:#fff3e0; --warn-ink:#9a4d00; --tip-bg:#e8f5ee; --tip-ink:#11663f;
@@ -16,7 +17,8 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#10151d; --panel:#171e29; --ink:#e3e9f1; --muted:#9aa8b9; --line:#2c3746;
-    --zone:#151c26; --zone-gcp:#13223a; --zone-gcp-line:#3f6db3; --zone-ext:#2a2216; --zone-ext-line:#8a6a2e;
+    --zone:#151c26; --zone-gcp:#13223a; --zone-gcp-line:#3f6db3;
+    --lane-build:#1d1a2e; --lane-index:#2a2216; --lane-ask:#14223a; --lane-ops:#142a22;
     --node:#1c2532; --node-line:#36445a;
     --build:#a593f0; --index:#f0a83a; --ask:#6aa6ff; --sec:#3fc28c; --plain:#8796a8;
     --warn-bg:#3a2a12; --warn-ink:#ffc27a; --tip-bg:#12301f; --tip-ink:#7fdcaa; --badge:#263142;
@@ -24,7 +26,8 @@
 }
 :root[data-theme="dark"]{
   --bg:#10151d; --panel:#171e29; --ink:#e3e9f1; --muted:#9aa8b9; --line:#2c3746;
-  --zone:#151c26; --zone-gcp:#13223a; --zone-gcp-line:#3f6db3; --zone-ext:#2a2216; --zone-ext-line:#8a6a2e;
+  --zone:#151c26; --zone-gcp:#13223a; --zone-gcp-line:#3f6db3;
+  --lane-build:#1d1a2e; --lane-index:#2a2216; --lane-ask:#14223a; --lane-ops:#142a22;
   --node:#1c2532; --node-line:#36445a;
   --build:#a593f0; --index:#f0a83a; --ask:#6aa6ff; --sec:#3fc28c; --plain:#8796a8;
   --warn-bg:#3a2a12; --warn-ink:#ffc27a; --tip-bg:#12301f; --tip-ink:#7fdcaa; --badge:#263142;
@@ -32,7 +35,7 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);
   font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;line-height:1.6}
-.wrap{max-width:1480px;margin:0 auto;padding:24px 16px 56px}
+.wrap{max-width:1500px;margin:0 auto;padding:24px 16px 56px}
 header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin-bottom:14px}
 h1{font-size:24px;margin:0}
 .pill{font-size:13px;padding:3px 10px;border-radius:999px;background:var(--warn-bg);color:var(--warn-ink);font-weight:600}
@@ -49,9 +52,10 @@ button{font:inherit;cursor:pointer}
 .note{font-size:14px;color:var(--muted);margin:0 0 10px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px}
 .scroll{overflow-x:auto}
-svg{display:block;width:100%;min-width:1060px;height:auto}
+svg{display:block;width:100%;min-width:1100px;height:auto}
 .zone{stroke-width:1.5}
 .zone-label{font-size:14px;font-weight:700;fill:var(--muted)}
+.lane-label{font-size:14px;font-weight:800}
 .node rect.box{fill:var(--node);stroke:var(--node-line);stroke-width:1.4}
 .node .t{font-size:15.5px;font-weight:700;fill:var(--ink)}
 .node .l{font-size:12.5px;fill:var(--muted)}
@@ -59,7 +63,6 @@ svg{display:block;width:100%;min-width:1060px;height:auto}
 .badge rect{fill:var(--badge)}
 .badge text{font-size:11px;font-weight:800;fill:var(--ink)}
 .edge path{fill:none;stroke-width:2.2}
-.edge.dash path{stroke-dasharray:7 5}
 .elabel rect{fill:var(--panel);opacity:.96}
 .elabel text{font-size:12px;font-weight:600}
 [data-flows]{transition:opacity .2s}
@@ -87,9 +90,6 @@ svg{display:block;width:100%;min-width:1060px;height:auto}
 @keyframes pulse{50%{stroke-width:6}}
 .edge.active path{stroke-width:3.6}
 #tour-dot{pointer-events:none}
-@media (min-width:900px){.tour{position:sticky;top:8px;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.08)}}
-@media (max-width:720px){.tour{grid-template-columns:1fr}.tour-ctrl{justify-content:flex-start}}
-@media (prefers-reduced-motion:reduce){.node.focus.pulse rect.box{animation:none}}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;margin-top:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
 .card h2{font-size:17px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
@@ -107,18 +107,21 @@ th{color:var(--muted);font-weight:600}
 .tag.tip{background:var(--tip-bg);color:var(--tip-ink)}
 h3{font-size:15px;margin:14px 0 4px}
 footer{margin-top:22px;font-size:13px;color:var(--muted)}
+@media (min-width:900px){.tour{position:sticky;top:8px;z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.08)}}
+@media (max-width:720px){.tour{grid-template-columns:1fr}.tour-ctrl{justify-content:flex-start}}
 @media (max-width:640px){h1{font-size:20px}.card li{font-size:14px}}
+@media (prefers-reduced-motion:reduce){.node.focus.pulse rect.box{animation:none}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>差旅報帳規定問答 · 詳細雲端架構</h1>
-    <span class="pill">規劃版 · 尚未部署</span>
+    <span class="pill">設計版 · 尚未部署</span>
     <span class="spacer"></span>
     <button class="theme" id="theme" type="button">切換深淺色</button>
   </header>
-  <p class="note">圖中的資源名稱、權限與數值都取自 <code>infra/</code> 的 Terraform 和 <code>app/</code> 的程式碼。這些都是設定，還沒有在 GCP 上實際驗證。</p>
+  <p class="note">情境為約 200 名員工的中小企業（需求見 <code>docs/REQUIREMENTS.md</code>）。圖中的資源名稱、權限與數值都取自 <code>infra/</code> 的 Terraform 與 <code>app/</code> 的程式碼，只通過靜態檢查，尚未在 GCP 上部署。</p>
 
   <div class="controls" role="group" aria-label="選擇要突出的流程">
     <span>突出流程：</span>
@@ -126,15 +129,14 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
     <button class="flow-btn" data-flow="build" aria-pressed="false" type="button"><i style="background:var(--build)"></i>① 建置映像</button>
     <button class="flow-btn" data-flow="index" aria-pressed="false" type="button"><i style="background:var(--index)"></i>② 建立索引</button>
     <button class="flow-btn" data-flow="ask" aria-pressed="false" type="button"><i style="background:var(--ask)"></i>③ 使用者提問</button>
-    <button class="flow-btn" data-flow="sec" aria-pressed="false" type="button"><i style="background:var(--sec)"></i>④ 身分與金鑰</button>
+    <button class="flow-btn" data-flow="sec" aria-pressed="false" type="button"><i style="background:var(--sec)"></i>④ 身分與維運</button>
   </div>
   <div class="legend">
-    <span><b>實線</b>：預設 offline 模式也會走的路徑</span>
-    <span><b>虛線</b>：只有 <code>AI_MODE=gemini</code> 時才會發生</span>
-    <span><b>①②③</b>：連線屬於哪一條流程</span>
+    <span><b>①②③</b>：連線屬於哪一條流程，三條流程由上而下排列</span>
+    <span><b>底部</b>：所有身分與權限（IAM）</span>
   </div>
 
-  <section class="tour" id="tour" aria-label="動畫導覽">
+  <section class="tour" id="tour" aria-label="流程導覽">
     <div class="tour-top">
       <strong>流程導覽</strong>
       <div role="group" aria-label="選擇導覽路線" style="display:flex;flex-wrap:wrap;gap:8px">
@@ -159,101 +161,104 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
   </section>
 
   <div class="panel scroll">
-    <svg id="diagram" viewBox="0 0 1600 1000" role="img" aria-label="GCP 雲端架構圖：建置、索引、問答三條流程"></svg>
+    <svg id="diagram" viewBox="0 0 1720 1100" role="img" aria-label="GCP 雲端架構圖：建置、索引、問答三條流程，以及 AI、維運與權限"></svg>
   </div>
 
   <div class="grid">
     <section class="card">
       <h2><i style="background:var(--ask)"></i>③ 一次提問在後端經過的步驟</h2>
       <ol>
-        <li>瀏覽器送出 <code>{question, history}</code>。Pydantic 限制問題最多 1,000 字、history 最多 20 筆，後端只取最近 6 筆（3 輪）。</li>
-        <li>問題含有「舊版、去年、2025」等字眼時，直接回答「只提供現行規定」，不進行搜尋。</li>
-        <li><code>load_index</code>：GCS 模式下先讀取 <code>processed/index.json</code> 的 metadata。<code>generation</code>（GCS 的物件版本號）沒變就直接用記憶體快取，變了才重新下載，並檢查 schema 版本、模式和 Embedding 模型是否相符。</li>
-        <li>改寫追問：offline 模式用規則把上一題接到短追問前面；gemini 模式請模型改寫成可以單獨搜尋的問題。</li>
-        <li>搜尋：先用 <code>effective_from／effective_to</code> 濾掉非生效章節，再依 cosine 相似度取前 3 名（gemini 模式另設 0.35 門檻）。</li>
-        <li>回答：offline 抽出最相關的 2 句，只引用 1 個章節；gemini 模式只根據這 3 個章節生成，回「查無資料」時不附來源。</li>
-        <li>錯誤：Gemini 失敗時回 503 和中文說明；其他例外一律回通用訊息，不把雲端錯誤細節傳給前端。</li>
+        <li>員工開啟網址，IAP 要求以公司 Google 帳號登入，確認在授權名單內才放行。</li>
+        <li>瀏覽器送出 <code>{question, history}</code>。問題最多 1,000 字，後端只取最近 6 則訊息（3 輪）。</li>
+        <li>問題含有「舊版、去年、2025」等字眼時，直接回答只提供現行規定。</li>
+        <li><code>load_index</code>：比對 <code>processed/index.json</code> 的版本號（generation），沒變就用記憶體快取。</li>
+        <li>Vertex AI 把追問改寫成可單獨搜尋的問題，再轉成向量。</li>
+        <li>依 <code>effective_from／effective_to</code> 排除失效規定，取相似度最高的 3 個章節（低於 0.35 不採用）。</li>
+        <li>Vertex AI 只根據這 3 個章節生成答案；找不到依據時回答查無資料，不附來源。</li>
+        <li>錯誤時回 503 與中文說明，不把雲端錯誤細節傳給前端。</li>
       </ol>
-      <div class="src">來源：app/main.py、app/rag.py <code>ask()</code>、<code>search()</code></div>
+      <div class="src">來源：app/main.py、app/rag.py <code>ask()</code>、<code>search()</code>、app/vertex.py</div>
     </section>
 
     <section class="card">
-      <h2><i style="background:var(--index)"></i>② 建立索引的 Job 做什麼</h2>
+      <h2><i style="background:var(--index)"></i>② 自動建立索引</h2>
       <ol>
-        <li>列出 <code>raw/</code> 下的 <code>.md</code>，解析開頭的 <code>title</code>、<code>effective_from</code>、<code>effective_to</code>。</li>
-        <li>依 <code>##</code> 標題把文件切成章節（目前共 36 節）。</li>
-        <li>offline：用中文字元 2–3 gram 計算 TF-IDF 向量，不需要外部服務。gemini：每個章節呼叫一次 <code>embedContent</code>（RETRIEVAL_DOCUMENT，768 維）。</li>
-        <li>整份結果寫成一個 JSON 檔，放到 <code>processed/index.json</code>，裡面記錄 <code>schema_version</code>、<code>mode</code>、<code>embedding_model</code>。</li>
+        <li>管理部門把規定上傳到 <code>raw/</code>，bucket 保留舊版本，改錯可以還原。</li>
+        <li>Eventarc 收到上傳事件，啟動 Workflows。Eventarc 無法直接啟動 Job，也不能依路徑過濾，所以由 Workflows 確認檔案是 <code>raw/*.md</code>。</li>
+        <li>Workflows 啟動 Cloud Run Job：解析標題與生效期間，依 <code>##</code> 切章節。</li>
+        <li>每個章節呼叫 Vertex AI <code>gemini-embedding-001</code> 產生 768 維向量。</li>
+        <li>整份結果寫成 <code>processed/index.json</code>。Job 寫入 <code>processed/</code> 也會產生事件，但 Workflows 會忽略，不會無限循環。</li>
       </ol>
-      <div class="src">來源：app/indexer.py <code>build_index()</code>、app/documents.py <code>parse_document()</code></div>
+      <div class="src">來源：infra/app/reindex.tf、reindex.workflow.yaml、app/indexer.py</div>
     </section>
 
     <section class="card">
-      <h2><i style="background:var(--build)"></i>① 部署順序：Terraform 為什麼分兩階段</h2>
+      <h2><i style="background:var(--build)"></i>① 部署順序</h2>
       <ol>
-        <li><b>bootstrap</b>：啟用 API、建立 bucket 並上傳 <code>raw/</code>、建立 Artifact Registry，以及一個沒有值的 secret。</li>
-        <li><b>手動</b>：首次啟用 IAP 時，無組織的專案須先在 Console 完成 OAuth 設定。（選用）以 stdin 把 Gemini key 加進 Secret Manager；再用 <code>gcloud builds submit</code> 建立映像。</li>
-        <li><b>app</b>：建立兩個 service account、IAM 權限、Cloud Run Service 和 Job。這一步需要第 2 步產生的 <code>image_uri</code>。</li>
-        <li>手動執行一次 Job 產生索引，再開啟服務網址，以授權的 Google 帳號登入測試。</li>
+        <li><b>bootstrap</b>：啟用 API、建立 bucket（開啟版本保留）與 Artifact Registry。</li>
+        <li><b>建置</b>：<code>gcloud builds submit</code> 建立映像，tag 不可覆寫。</li>
+        <li><b>app</b>：建立服務帳號與權限、Cloud Run Service 與 Job、IAP、自動索引、監控告警。</li>
+        <li><b>上傳規定</b>：管理部門上傳到 <code>raw/</code>，自動產生索引。</li>
       </ol>
-      <p style="margin:10px 0 0;font-size:14.5px"><b>為什麼要分兩階段？</b>Cloud Run 建立時映像必須已經存在，而金鑰的值不能寫進 Terraform state，所以中間一定有一段手動步驟。</p>
-      <div class="src">來源：infra/bootstrap/main.tf、infra/app/main.tf、docs/DEPLOYMENT.md</div>
+      <p style="margin:10px 0 0;font-size:14.5px"><b>為什麼分兩階段？</b>Cloud Run 建立時映像必須已經存在，所以先建映像庫、建好映像，再建執行環境。</p>
+      <div class="src">來源：infra/bootstrap/、infra/app/、docs/DEPLOYMENT.md</div>
     </section>
 
     <section class="card">
-      <h2><i style="background:var(--sec)"></i>④ 安全設計</h2>
+      <h2><i style="background:var(--sec)"></i>④ 安全與維運</h2>
       <ul>
-        <li><b>服務不公開</b>：IAP 直接啟用於 Cloud Run，使用者須以名單內的 Google 帳號登入，未授權者在進入應用程式前即被拒絕。<code>run.invoker</code> 只授予 IAP 的服務代理，沒有授權給 <code>allUsers</code>。</li>
-        <li><b>金鑰只放一處</b>：不在 Git、tfvars、state、映像或網址裡，只存在 Secret Manager，執行時才注入成環境變數。</li>
-        <li><b>最小權限</b>：Service 和 Job 各用一個 SA。Job 的寫入權限用 IAM Condition 限制在 <code>processed/</code> 前綴。</li>
-        <li><b>Bucket</b>：uniform bucket-level access，並強制開啟公開存取防護。</li>
-        <li><b>提示注入防護</b>：prompt 要求模型只根據章節回答，不聽從文件裡要它改變規則的文字。</li>
+        <li><b>零信任登入</b>：IAP 驗證公司帳號並強制兩步驟驗證，不限制連線地點，出差也能用。</li>
+        <li><b>沒有長期金鑰</b>：Service 與 Job 以服務帳號呼叫 Vertex AI，不需要 Secret Manager。</li>
+        <li><b>最小權限</b>：每個工作負載各用一個服務帳號；Job 只能寫 <code>processed/</code>，管理部門只能寫 <code>raw/</code>。</li>
+        <li><b>監控</b>：回應過慢、伺服器錯誤、索引失敗時寄信給系統管理者。</li>
+        <li><b>稽核與隱私</b>：記錄誰透過 IAP 存取；不記錄提問內容。</li>
       </ul>
-      <div class="src">來源：infra/app/main.tf、app/gemini.py、app/rag.py <code>_gemini_answer()</code></div>
+      <div class="src">來源：infra/app/main.tf、monitoring.tf</div>
     </section>
 
     <section class="card">
-      <h2><i style="background:var(--plain)"></i>成本護欄</h2>
-      <ul>
-        <li>Service 最少 0、最多 1 個實例：閒置時不跑，流量大時也不會一直擴充。</li>
-        <li>Job 不排程、不重試，最長 600 秒。</li>
-        <li>預設 offline，不呼叫 Gemini。要開 gemini 模式必須同時設定 <code>ai_mode</code> 和 <code>gemini_free_tier_confirmed</code>，Terraform precondition 會檢查。</li>
-        <li>私人 repo 會跳過 CI，而且 CI 沒有任何部署權限。</li>
-        <li>注意：Storage、Secret、Artifact Registry、Build、Logging 超出免費額度後仍會收費。</li>
-      </ul>
-    </section>
-
-    <section class="card">
-      <h2><i style="background:var(--plain)"></i>本機模式和雲端模式差在哪</h2>
+      <h2><i style="background:var(--plain)"></i>容量設計</h2>
       <table>
-        <tr><th>項目</th><th>本機預設</th><th>雲端（Terraform）</th></tr>
-        <tr><td><code>STORAGE_MODE</code></td><td>local</td><td>gcs</td></tr>
-        <tr><td><code>AI_MODE</code></td><td>local</td><td>offline（等同 local）或 gemini</td></tr>
-        <tr><td>文件來源</td><td><code>policy_docs/</code></td><td><code>raw/*.md</code></td></tr>
-        <tr><td>索引位置</td><td><code>data/processed/index.json</code></td><td><code>processed/index.json</code></td></tr>
-        <tr><td>重建索引</td><td>缺檔或文件變更時自動重建</td><td>手動執行 Cloud Run Job</td></tr>
+        <tr><th>項目</th><th>設定</th><th>依據</th></tr>
+        <tr><td>最少實例</td><td>1</td><td>不讓第一位使用者等冷啟動</td></tr>
+        <tr><td>每實例併發</td><td>10</td><td>請求多在等 Vertex AI 回覆</td></tr>
+        <tr><td>最多實例</td><td>5</td><td>5 × 10 = 50，尖峰 25 人的 2 倍</td></tr>
+        <tr><td>記憶體</td><td>1 GiB</td><td>索引整份讀進記憶體</td></tr>
+        <tr><td>請求逾時</td><td>60 秒</td><td>最多 3 次 AI 呼叫 × 15 秒</td></tr>
       </table>
-      <div class="src">來源：app/config.py、app/indexer.py <code>load_index()</code></div>
+    </section>
+
+    <section class="card">
+      <h2><i style="background:var(--plain)"></i>本機模式和雲端模式</h2>
+      <table>
+        <tr><th>項目</th><th>本機（開發、評審）</th><th>雲端（Terraform）</th></tr>
+        <tr><td><code>AI_MODE</code></td><td>local</td><td>vertex</td></tr>
+        <tr><td>檢索</td><td>TF-IDF</td><td>Vertex AI Embedding</td></tr>
+        <tr><td>回答</td><td>抽取原文句子</td><td>Vertex AI 生成</td></tr>
+        <tr><td>文件與索引</td><td><code>policy_docs/</code>、本機 JSON</td><td>Cloud Storage</td></tr>
+        <tr><td>重建索引</td><td>文件變更時自動</td><td>上傳後自動觸發 Job</td></tr>
+      </table>
+      <div class="src">來源：app/config.py、infra/app/main.tf</div>
     </section>
 
     <section class="card wide">
-      <h2><i style="background:var(--warn-ink)"></i>架構檢視：已處理項目與後續改進方向</h2>
-      <h3><span class="tag tip">已修正</span>每次提問都重新下載索引</h3>
-      <p style="margin:0;font-size:14.5px">原本 <code>ask()</code> 每次都呼叫 <code>load_index()</code>，GCS 模式下每題都下載一次 <code>index.json</code>。現在改成快取在程序記憶體，只用一次 metadata 請求比對 <code>generation</code>，Job 寫入新索引後才重新下載。驗證索引失敗的版本不會被快取。（app/indexer.py <code>_load_gcs_index()</code>）</p>
-      <h3><span class="tag tip">已修正</span>gemini 模式的逾時加總超過 Cloud Run 上限</h3>
-      <p style="margin:0;font-size:14.5px">一題最多依序呼叫 Gemini 3 次（改寫、Embedding、生成）。原本每次逾時 25 秒，最壞 75 秒，超過 Service 的 60 秒 <code>timeout</code>。現在單次逾時改成 15 秒，最壞 45 秒；測試也會讀取 Terraform 設定，確認逾時總和低於 Service 上限。（app/gemini.py <code>GEMINI_TIMEOUT_SECONDS</code>）</p>
-      <h3><span class="tag tip">取捨</span>選 AI Studio API key，而不是 Vertex AI</h3>
-      <p style="margin:0;font-size:14.5px">Vertex AI 可以直接用 service account 驗證，完全不需要 API key，也就不需要 Secret Manager。這裡選 API key 是為了使用 AI Studio 的 Free Tier。若需正式環境或企業資料，建議改用 Vertex AI 以 service account 驗證。</p>
-      <h3><span class="tag tip">建議</span>其他可以提的改進</h3>
+      <h2><i style="background:var(--warn-ink)"></i>架構檢視：已處理項目與待確認事項</h2>
+      <h3><span class="tag tip">已處理</span>索引快取與逾時預算</h3>
+      <p style="margin:0;font-size:14.5px">索引依 Cloud Storage 的版本號快取，不再每題下載；AI 單次逾時 15 秒，三次呼叫共 45 秒，低於 Cloud Run 的 60 秒上限，並有測試檢查兩邊設定。</p>
+      <h3><span class="tag tip">已處理</span>依需求重新設計</h3>
+      <p style="margin:0;font-size:14.5px">容量改為 1–5 個實例、每個併發 10；資料移到台灣；改用 Vertex AI，不再使用 API key；上傳後自動重建索引；加入監控、稽核與版本保留；Terraform 不再覆蓋管理部門上傳的規定。</p>
+      <h3><span class="tag warn">待確認</span>Vertex AI 的台灣區域</h3>
+      <p style="margin:0;font-size:14.5px">官方區域表格沒有明確列出台灣可用的 Gemini 與 Embedding 模型。部署前要確認；若不提供，改用最近且有資料落地承諾的區域。文件與執行環境仍留在台灣。</p>
+      <h3><span class="tag warn">其他限制</span></h3>
       <ul>
-        <li>Terraform 目前是本機 state。多人協作時改用 GCS backend，才有狀態鎖和共享。</li>
-        <li>Secret 參照 <code>latest</code>：輪替金鑰後，要等新實例啟動才會拿到新值。正式環境可以改成固定版本。</li>
-        <li>Dockerfile 也 <code>COPY policy_docs</code>，但雲端實際讀的是 GCS，等於有兩份文件來源。可以拿掉，避免混淆。</li>
-        <li>更新文件後要手動重跑 Job。可以用 Eventarc 監聽 <code>raw/</code> 上傳後自動觸發。這次刻意不做，是為了避免產生費用。</li>
+        <li>短時間上傳多個檔案時，每個檔案都會啟動一次 Job；結果一致，但會重複執行。</li>
+        <li>Cloud Monitoring 沒有第 90 百分位，回應告警用第 95 百分位、8 秒，比需求略嚴格。</li>
+        <li>Terraform state 目前在本機；正式環境應改放 GCS backend，才有共享與鎖定。</li>
+        <li>IAM、Eventarc 與告警只通過靜態檢查，實際行為要部署後驗證。</li>
       </ul>
     </section>
   </div>
-  <footer>GCP 產品圖示來自 Google Cloud 官方圖示庫。這張圖是規劃，不代表已部署或已驗證。</footer>
+  <footer>GCP 產品圖示來自 Google Cloud 官方圖示庫。這張圖是設計，不代表已部署或已驗證。</footer>
 </div>
 
 <script>
@@ -261,61 +266,72 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
   "use strict";
   const NS = "http://www.w3.org/2000/svg";
   const svg = document.getElementById("diagram");
-  const ICONS = {"artifact_registry": "data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIGJhc2VQcm9maWxlPSJ0aW55IiBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIKCSB4PSIwcHgiIHk9IjBweCIgd2lkdGg9IjI0cHgiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDI0IDI0IiBvdmVyZmxvdz0idmlzaWJsZSIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CjxnID4KCTxyZWN0IHk9IjAiIGZpbGw9Im5vbmUiIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIvPgoJPHBvbHlnb24gZmlsbC1ydWxlPSJldmVub2RkIiBmaWxsPSIjNUM4NURFIiBwb2ludHM9IjYsMi40IDAuOCw1LjQgMC44LDE5LjEgNiwyMi4xIDYsMTkuNSAzLDE3LjggMyw2LjcgNiw1IAkiLz4KCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIwLjgsOCAwLjgsMTYuNSAzLDE3LjggMyw2LjcgCSIvPgoJPHBvbHlnb24gZmlsbC1ydWxlPSJldmVub2RkIiBmaWxsPSIjMzM2N0Q2IiBwb2ludHM9IjAuOCw4IDMsNy41IDMsNi43IAkiLz4KCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzVDODVERSIgcG9pbnRzPSIxOCwyLjQgMTgsNSAyMSw2LjcgMjEsMTcuOCAxOCwxOS41IDE4LDIyLjEgMjMuMiwxOS4xIDIzLjIsNS40IAkiLz4KCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIyMSwxNy44IDIzLjIsMTYuNSAyMy4yLDggMjEsNi43IAkiLz4KCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIyMSw3LjUgMjMuMiw4IDIxLDYuNyAJIi8+Cgk8cG9seWdvbiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGZpbGw9IiMzMzY3RDYiIHBvaW50cz0iMjEsMTcuMSAyMSwxNy44IDIzLjIsMTYuNSAJIi8+Cgk8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Ljg2MDAwMCwgNi41MDAwMDApIj4KCQk8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg0LjU0MDAwMCwgMC4wMDAwMDApIj4KCQkJPHBvbHlnb24gZmlsbC1ydWxlPSJldmVub2RkIiBmaWxsPSIjNUM4NURFIiBwb2ludHM9IjAuNiwtMSAtMi40LDAuNiAwLjYsMi4yIDMuNiwwLjYgCQkJIi8+CgkJCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIxLDUuOSAzLjksNC4zIDMuOSwxLjIgMSwyLjggCQkJIi8+CgkJCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIwLjMsMi44IC0yLjcsMS4yIC0yLjcsNC4zIDAuMyw1LjkgCQkJIi8+CgkJPC9nPgoJCTxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAuMDAwMDAwLCA3Ljk3NjE5MCkiPgoJCQk8cG9seWdvbiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGZpbGw9IiM1Qzg1REUiIHBvaW50cz0iMS43LC0zLjEgLTEuMiwtMS41IDEuNywwLjEgNC41LC0xLjUgCQkJIi8+CgkJCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIxLjksMy44IDQuOCwyLjIgNC44LC0xIDEuOSwwLjYgCQkJIi8+CgkJCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIxLjQsMC42IC0xLjUsLTEgLTEuNSwyLjIgMS40LDMuOCAJCQkiLz4KCQk8L2c+CgkJPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoOS4zNjAwMDAsIDcuOTc2MTkwKSI+CgkJCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzVDODVERSIgcG9pbnRzPSItMC43LC0zLjEgLTMuNiwtMS41IC0wLjcsMC4xIDIuMiwtMS41IAkJCSIvPgoJCQk8cG9seWdvbiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGZpbGw9IiMzMzY3RDYiIHBvaW50cz0iLTAuNCwzLjggMi41LDIuMiAyLjUsLTEgLTAuNCwwLjYgCQkJIi8+CgkJCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSItMSwwLjYgLTMuOSwtMSAtMy45LDIuMiAtMSwzLjggCQkJIi8+CgkJPC9nPgoJPC9nPgo8L2c+Cjwvc3ZnPgo=", "cloud_build": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNHB4IiBoZWlnaHQ9IjI0cHgiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiM0Mjg1ZjQ7fS5jbHMtMntmaWxsOiM2NjlkZjY7fS5jbHMtM3tmaWxsOiNhZWNiZmE7fTwvc3R5bGU+PC9kZWZzPjx0aXRsZT5JY29uXzI0cHhfQ2xvdWRCdWlsZF9Db2xvcjwvdGl0bGU+PGcgZGF0YS1uYW1lPSJQcm9kdWN0IEljb25zIj48ZyA+PGcgPjxnID48cG9seWdvbiBjbGFzcz0iY2xzLTEiIHBvaW50cz0iMTIuMTUgMTYuMjQgMTUuNjcgMTQuMjEgMTUuNjcgMTAuMTUgMTQuNDkgOS40NiAxMC45NyAxNS41NiAxMi4xNSAxNi4yNCIvPjxwb2x5Z29uIGNsYXNzPSJjbHMtMiIgcG9pbnRzPSI4LjYzIDEwLjE1IDguNjMgMTQuMjEgOS44MSAxNC44OSAxMy4zNCA4LjggMTIuMTUgOC4xMSA4LjYzIDEwLjE1Ii8+PC9nPjwvZz48L2c+PHBvbHlnb24gY2xhc3M9ImNscy0zIiBwb2ludHM9IjExLjQ2IDE3LjQ1IDcuMjQgMTUuMDEgNy4yNCAxMC4xNSAzLjQ5IDcuOTggMy40OSAxNy4xOCAxMS40NiAyMS43OCAxMS40NiAxNy40NSIvPjxwb2x5Z29uIGNsYXNzPSJjbHMtMyIgcG9pbnRzPSI3LjkzIDguOTUgMTIuMTUgNi41MSAxNi4zNyA4Ljk1IDIwLjEzIDYuNzggMTIuMTUgMi4xNyA0LjE3IDYuNzggNy45MyA4Ljk1Ii8+PHBvbHlnb24gY2xhc3M9ImNscy0zIiBwb2ludHM9IjE3LjA2IDE1LjAxIDEyLjg0IDE3LjQ1IDEyLjg0IDIxLjc4IDIwLjgyIDE3LjE4IDIwLjgyIDcuOTggMTcuMDYgMTAuMTUgMTcuMDYgMTUuMDEiLz48L2c+PC9zdmc+", "cloud_run": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNHB4IiBoZWlnaHQ9IjI0cHgiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiNhZWNiZmE7fS5jbHMtMSwuY2xzLTJ7ZmlsbC1ydWxlOmV2ZW5vZGQ7fS5jbHMtMntmaWxsOiM0Mjg1ZjQ7fTwvc3R5bGU+PC9kZWZzPjx0aXRsZT5JY29uXzI0cHhfQ2xvdWRSdW5fQ29sb3I8L3RpdGxlPjxnIGRhdGEtbmFtZT0iUHJvZHVjdCBJY29ucyI+PGcgPjxwb2x5Z29uIGNsYXNzPSJjbHMtMSIgcG9pbnRzPSI4LjkgMi42MyAxMi4wMiAxMiAyMS4zOCAxMiA4LjkgMi42MyIvPjxwb2x5Z29uIGNsYXNzPSJjbHMtMiIgcG9pbnRzPSIyMS4zOCAxMiAxMi4wMiAxMiA4LjkgMjEuMzggMjEuMzggMTIiLz48cG9seWdvbiBjbGFzcz0iY2xzLTIiIHBvaW50cz0iMy40NCAyMS4zOCA2LjU3IDE5LjgxIDguOSAxMiA1Ljc4IDEyIDMuNDQgMjEuMzgiLz48cG9seWdvbiBjbGFzcz0iY2xzLTEiIHBvaW50cz0iMy40NCAyLjYzIDUuNzggMTIgOC45IDEyIDYuNTcgNC4xOSAzLjQ0IDIuNjMiLz48L2c+PC9nPjwvc3ZnPg==", "cloud_storage": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNHB4IiBoZWlnaHQ9IjI0cHgiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiNhZWNiZmE7fS5jbHMtMntmaWxsOiM2NjlkZjY7fS5jbHMtM3tmaWxsOiM0Mjg1ZjQ7fS5jbHMtNHtmaWxsOiNmZmY7fTwvc3R5bGU+PC9kZWZzPjx0aXRsZT5JY29uXzI0cHhfQ2xvdWRTdG9yYWdlX0NvbG9yPC90aXRsZT48ZyBkYXRhLW5hbWU9IlByb2R1Y3QgSWNvbnMiPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMiIgeT0iNCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjciLz48cmVjdCBjbGFzcz0iY2xzLTIiIHg9IjIwIiB5PSI0IiB3aWR0aD0iMiIgaGVpZ2h0PSI3Ii8+PHBvbHlnb24gY2xhc3M9ImNscy0zIiBwb2ludHM9IjIyIDQgMjAgNCAyMCAxMSAyMiA0Ii8+PHJlY3QgY2xhc3M9ImNscy0yIiB4PSIyIiB5PSI0IiB3aWR0aD0iMiIgaGVpZ2h0PSI3Ii8+PHJlY3QgY2xhc3M9ImNscy00IiB4PSI2IiB5PSI3IiB3aWR0aD0iNiIgaGVpZ2h0PSIxIi8+PHJlY3QgY2xhc3M9ImNscy00IiB4PSIxNSIgeT0iNiIgd2lkdGg9IjMiIGhlaWdodD0iMyIgcng9IjEuNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMiIgeT0iMTMiIHdpZHRoPSIyMCIgaGVpZ2h0PSI3Ii8+PHJlY3QgY2xhc3M9ImNscy0yIiB4PSIyMCIgeT0iMTMiIHdpZHRoPSIyIiBoZWlnaHQ9IjciLz48cG9seWdvbiBjbGFzcz0iY2xzLTMiIHBvaW50cz0iMjIgMTMgMjAgMTMgMjAgMjAgMjIgMTMiLz48cmVjdCBjbGFzcz0iY2xzLTIiIHg9IjIiIHk9IjEzIiB3aWR0aD0iMiIgaGVpZ2h0PSI3Ii8+PHJlY3QgY2xhc3M9ImNscy00IiB4PSI2IiB5PSIxNiIgd2lkdGg9IjYiIGhlaWdodD0iMSIvPjxyZWN0IGNsYXNzPSJjbHMtNCIgeD0iMTUiIHk9IjE1IiB3aWR0aD0iMyIgaGVpZ2h0PSIzIiByeD0iMS41Ii8+PC9nPjwvc3ZnPg==", "secret_manager": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjRweCIgaGVpZ2h0PSIyNHB4IiB2aWV3Qm94PSIwIDAgMjQgMjQiIHZlcnNpb249IjEuMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+CiAgICA8ZyBzdHJva2U9Im5vbmUiIHN0cm9rZS13aWR0aD0iMSIgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj4KICAgICAgICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyLjAwMDAwMCwgNi4wMDAwMDApIiBmaWxsPSIjNDI4NUY0IiBmaWxsLXJ1bGU9Im5vbnplcm8iPgogICAgICAgICAgICA8cGF0aCBkPSJNMjAsOS40MTQ2OTEyNWUtMTQgTDIwLDExLjg4Njc5MjUgTDE2LjAzNzczNTgsMTEuODg2NzkyNSBDMTUuOTMzNTMxMiwxMS44ODY3OTI1IDE1Ljg0OTA1NjYsMTEuODAyMzE3OSAxNS44NDkwNTY2LDExLjY5ODExMzIgTDE1Ljg0OTA1NjYsMTAuNTY2MDM3NyBDMTUuODQ5MDU2NiwxMC40NjE4MzMxIDE1LjkzMzUzMTIsMTAuMzc3MzU4NSAxNi4wMzc3MzU4LDEwLjM3NzM1ODUgTDE4LjQ5MDA1NjYsMTAuMzc3IEwxOC40OTAwNTY2LDEuNTA5IEwxNi4wMzc3MzU4LDEuNTA5NDMzOTYgQzE1LjkzMzUzMTIsMS41MDk0MzM5NiAxNS44NDkwNTY2LDEuNDI0OTU5MzkgMTUuODQ5MDU2NiwxLjMyMDc1NDcyIEwxNS44NDkwNTY2LDAuMTg4Njc5MjQ1IEMxNS44NDkwNTY2LDAuMDg0NDc0NTc1NSAxNS45MzM1MzEyLDkuNDExMDU0MzRlLTE0IDE2LjAzNzczNTgsOS40MTQ2OTEyNWUtMTQgTDIwLDkuNDE0NjkxMjVlLTE0IFogTTQuMzA5MTAxLDkuNDE0NjkxMjVlLTE0IEM0LjQxMzMwNTY3LDkuMzg3Nzg2OWUtMTQgNC40OTc3ODAyNCwwLjA4NDQ3NDU3NTUgNC40OTc3ODAyNCwwLjE4ODY3OTI0NSBMNC40OTc3ODAyNCwxLjMyMDc1NDcyIEM0LjQ5Nzc4MDI0LDEuNDI0OTU5MzkgNC40MTMzMDU2NywxLjUwOTQzMzk2IDQuMzA5MTAxLDEuNTA5NDMzOTYgTDEuNTA5LDEuNTA5IEwxLjUwOSwxMC4zNzcgTDQuMjkyNDUyODMsMTAuMzc3MzU4NSBDNC4zOTY2NTc1LDEwLjM3NzM1ODUgNC40ODExMzIwOCwxMC40NjE4MzMxIDQuNDgxMTMyMDgsMTAuNTY2MDM3NyBMNC40ODExMzIwOCwxMS42OTgxMTMyIEM0LjQ4MTEzMjA4LDExLjgwMjMxNzkgNC4zOTY2NTc1LDExLjg4Njc5MjUgNC4yOTI0NTI4MywxMS44ODY3OTI1IEwyLjE0MDUwOTk5ZS0xMywxMS44ODY3OTI1IEwyLjE0MDUwOTk5ZS0xMyw5LjQxNDY5MTI1ZS0xNCBMNC4zMDkxMDEsOS40MTQ2OTEyNWUtMTQgWiBNMTUuNDI3MTA5OCwzLjg2NzkyNDUzIEwxNS40MjcxMDk4LDUuMzI0MDU2NiBMMTUuNDg3OTMwNSw1LjM0ODUyOTQxIEwxNi44MzgxNDk0LDQuODcxMzA5NjYgTDE3LjExNzkyNDUsNS42OTExNDg3MiBMMTUuNzU1NTQxNCw2LjE1NjEzMjA4IEwxNS43MTkwNDksNi4yNTQwMjMzMSBMMTYuNjU1Njg3NCw3LjUxNDM3MjkyIEwxNS45NTAxNjc2LDguMDI4MzAxODkgTDE1LjAzNzg1NzUsNi43Njc5NTIyOCBMMTQuOTUyNzA4NSw2Ljc2Nzk1MjI4IEwxNC4wNDAzOTg0LDguMDI4MzAxODkgTDEzLjMzNDg3ODYsNy41MTQzNzI5MiBMMTQuMjU5MzUyOSw2LjI1NDAyMzMxIEwxNC4yMzUwMjQ2LDYuMTU2MTMyMDggTDEyLjg3MjY0MTUsNS42OTExNDg3MiBMMTMuMTUyNDE2Niw0Ljg3MTMwOTY2IEwxNC40OTA0NzE0LDUuMzQ4NTI5NDEgTDE0LjU2MzQ1NjIsNS4zMjQwNTY2IEwxNC41NjM0NTYyLDMuODY3OTI0NTMgTDE1LjQyNzEwOTgsMy44Njc5MjQ1MyBaIE01LjE5NTk3NzczLDMuODY3OTI0NTMgTDUuMTk1OTc3NzMsNS4zMDk2Mzk0NSBMNS4yNTY3OTg0LDUuMzMzODY5OTYgTDYuNjA3MDE3MzUsNC44NjEzNzUxNSBMNi44ODY3OTI0NSw1LjY3MzA5NyBMNS41MjQ0MDkzNiw2LjEzMzQ3NjU2IEw1LjQ4NzkxNjk2LDYuMjMwMzk4NTcgTDYuNDI0NTU1MzMsNy40NzgyNjk0NyBMNS43MTkwMzU1Miw3Ljk4NzExMDAzIEw0LjgwNjcyNTQxLDYuNzM5MjM5MTMgTDQuNzIxNTc2NDcsNi43MzkyMzkxMyBMMy44MDkyNjYzNyw3Ljk4NzExMDAzIEwzLjEwMzc0NjU1LDcuNDc4MjY5NDcgTDQuMDI4MjIwNzksNi4yMzAzOTg1NyBMNC4wMDM4OTI1Miw2LjEzMzQ3NjU2IEwyLjY0MTUwOTQzLDUuNjczMDk3IEwyLjkyMTI4NDUzLDQuODYxMzc1MTUgTDQuMjU5MzM5MzUsNS4zMzM4Njk5NiBMNC4zMzIzMjQxNiw1LjMwOTYzOTQ1IEw0LjMzMjMyNDE2LDMuODY3OTI0NTMgTDUuMTk1OTc3NzMsMy44Njc5MjQ1MyBaIE0xMC4yOTAzMTczLDMuODY3OTI0NTMgTDEwLjI5MDMxNzMsNS4zMDk2Mzk0NSBMMTAuMzUxMTM4LDUuMzMzODY5OTYgTDExLjcwMTM1Nyw0Ljg2MTM3NTE1IEwxMS45ODExMzIxLDUuNjczMDk3IEwxMC42MTg3NDksNi4xMzM0NzY1NiBMMTAuNTgyMjU2Niw2LjIzMDM5ODU3IEwxMS41MTg4OTUsNy40NzgyNjk0NyBMMTAuODEzMzc1MSw3Ljk4NzExMDAzIEw5LjkwMTA2NTA0LDYuNzM5MjM5MTMgTDkuODE1OTE2MDksNi43MzkyMzkxMyBMOC45MDM2MDU5OSw3Ljk4NzExMDAzIEw4LjE5ODA4NjE4LDcuNDc4MjY5NDcgTDkuMTIyNTYwNDIsNi4yMzAzOTg1NyBMOS4wOTgyMzIxNSw2LjEzMzQ3NjU2IEw3LjczNTg0OTA2LDUuNjczMDk3IEw4LjAxNTYyNDE2LDQuODYxMzc1MTUgTDkuMzUzNjc4OTcsNS4zMzM4Njk5NiBMOS40MjY2NjM3OCw1LjMwOTYzOTQ1IEw5LjQyNjY2Mzc4LDMuODY3OTI0NTMgTDEwLjI5MDMxNzMsMy44Njc5MjQ1MyBaIiA+PC9wYXRoPgogICAgICAgIDwvZz4KICAgIDwvZz4KPC9zdmc+"};
+  const ICONS = {"artifact_registry": "data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIGJhc2VQcm9maWxlPSJ0aW55IiBpZD0iTGF5ZXJfMSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIKCSB4PSIwcHgiIHk9IjBweCIgd2lkdGg9IjI0cHgiIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAwIDI0IDI0IiBvdmVyZmxvdz0idmlzaWJsZSIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CjxnID4KCTxyZWN0IHk9IjAiIGZpbGw9Im5vbmUiIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIvPgoJPHBvbHlnb24gZmlsbC1ydWxlPSJldmVub2RkIiBmaWxsPSIjNUM4NURFIiBwb2ludHM9IjYsMi40IDAuOCw1LjQgMC44LDE5LjEgNiwyMi4xIDYsMTkuNSAzLDE3LjggMyw2LjcgNiw1IAkiLz4KCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIwLjgsOCAwLjgsMTYuNSAzLDE3LjggMyw2LjcgCSIvPgoJPHBvbHlnb24gZmlsbC1ydWxlPSJldmVub2RkIiBmaWxsPSIjMzM2N0Q2IiBwb2ludHM9IjAuOCw4IDMsNy41IDMsNi43IAkiLz4KCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzVDODVERSIgcG9pbnRzPSIxOCwyLjQgMTgsNSAyMSw2LjcgMjEsMTcuOCAxOCwxOS41IDE4LDIyLjEgMjMuMiwxOS4xIDIzLjIsNS40IAkiLz4KCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIyMSwxNy44IDIzLjIsMTYuNSAyMy4yLDggMjEsNi43IAkiLz4KCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIyMSw3LjUgMjMuMiw4IDIxLDYuNyAJIi8+Cgk8cG9seWdvbiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGZpbGw9IiMzMzY3RDYiIHBvaW50cz0iMjEsMTcuMSAyMSwxNy44IDIzLjIsMTYuNSAJIi8+Cgk8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2Ljg2MDAwMCwgNi41MDAwMDApIj4KCQk8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg0LjU0MDAwMCwgMC4wMDAwMDApIj4KCQkJPHBvbHlnb24gZmlsbC1ydWxlPSJldmVub2RkIiBmaWxsPSIjNUM4NURFIiBwb2ludHM9IjAuNiwtMSAtMi40LDAuNiAwLjYsMi4yIDMuNiwwLjYgCQkJIi8+CgkJCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIxLDUuOSAzLjksNC4zIDMuOSwxLjIgMSwyLjggCQkJIi8+CgkJCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIwLjMsMi44IC0yLjcsMS4yIC0yLjcsNC4zIDAuMyw1LjkgCQkJIi8+CgkJPC9nPgoJCTxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDAuMDAwMDAwLCA3Ljk3NjE5MCkiPgoJCQk8cG9seWdvbiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGZpbGw9IiM1Qzg1REUiIHBvaW50cz0iMS43LC0zLjEgLTEuMiwtMS41IDEuNywwLjEgNC41LC0xLjUgCQkJIi8+CgkJCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIxLjksMy44IDQuOCwyLjIgNC44LC0xIDEuOSwwLjYgCQkJIi8+CgkJCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSIxLjQsMC42IC0xLjUsLTEgLTEuNSwyLjIgMS40LDMuOCAJCQkiLz4KCQk8L2c+CgkJPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoOS4zNjAwMDAsIDcuOTc2MTkwKSI+CgkJCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzVDODVERSIgcG9pbnRzPSItMC43LC0zLjEgLTMuNiwtMS41IC0wLjcsMC4xIDIuMiwtMS41IAkJCSIvPgoJCQk8cG9seWdvbiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGZpbGw9IiMzMzY3RDYiIHBvaW50cz0iLTAuNCwzLjggMi41LDIuMiAyLjUsLTEgLTAuNCwwLjYgCQkJIi8+CgkJCTxwb2x5Z29uIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzMzNjdENiIgcG9pbnRzPSItMSwwLjYgLTMuOSwtMSAtMy45LDIuMiAtMSwzLjggCQkJIi8+CgkJPC9nPgoJPC9nPgo8L2c+Cjwvc3ZnPgo=", "cloud_build": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNHB4IiBoZWlnaHQ9IjI0cHgiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiM0Mjg1ZjQ7fS5jbHMtMntmaWxsOiM2NjlkZjY7fS5jbHMtM3tmaWxsOiNhZWNiZmE7fTwvc3R5bGU+PC9kZWZzPjx0aXRsZT5JY29uXzI0cHhfQ2xvdWRCdWlsZF9Db2xvcjwvdGl0bGU+PGcgZGF0YS1uYW1lPSJQcm9kdWN0IEljb25zIj48ZyA+PGcgPjxnID48cG9seWdvbiBjbGFzcz0iY2xzLTEiIHBvaW50cz0iMTIuMTUgMTYuMjQgMTUuNjcgMTQuMjEgMTUuNjcgMTAuMTUgMTQuNDkgOS40NiAxMC45NyAxNS41NiAxMi4xNSAxNi4yNCIvPjxwb2x5Z29uIGNsYXNzPSJjbHMtMiIgcG9pbnRzPSI4LjYzIDEwLjE1IDguNjMgMTQuMjEgOS44MSAxNC44OSAxMy4zNCA4LjggMTIuMTUgOC4xMSA4LjYzIDEwLjE1Ii8+PC9nPjwvZz48L2c+PHBvbHlnb24gY2xhc3M9ImNscy0zIiBwb2ludHM9IjExLjQ2IDE3LjQ1IDcuMjQgMTUuMDEgNy4yNCAxMC4xNSAzLjQ5IDcuOTggMy40OSAxNy4xOCAxMS40NiAyMS43OCAxMS40NiAxNy40NSIvPjxwb2x5Z29uIGNsYXNzPSJjbHMtMyIgcG9pbnRzPSI3LjkzIDguOTUgMTIuMTUgNi41MSAxNi4zNyA4Ljk1IDIwLjEzIDYuNzggMTIuMTUgMi4xNyA0LjE3IDYuNzggNy45MyA4Ljk1Ii8+PHBvbHlnb24gY2xhc3M9ImNscy0zIiBwb2ludHM9IjE3LjA2IDE1LjAxIDEyLjg0IDE3LjQ1IDEyLjg0IDIxLjc4IDIwLjgyIDE3LjE4IDIwLjgyIDcuOTggMTcuMDYgMTAuMTUgMTcuMDYgMTUuMDEiLz48L2c+PC9zdmc+", "cloud_run": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNHB4IiBoZWlnaHQ9IjI0cHgiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiNhZWNiZmE7fS5jbHMtMSwuY2xzLTJ7ZmlsbC1ydWxlOmV2ZW5vZGQ7fS5jbHMtMntmaWxsOiM0Mjg1ZjQ7fTwvc3R5bGU+PC9kZWZzPjx0aXRsZT5JY29uXzI0cHhfQ2xvdWRSdW5fQ29sb3I8L3RpdGxlPjxnIGRhdGEtbmFtZT0iUHJvZHVjdCBJY29ucyI+PGcgPjxwb2x5Z29uIGNsYXNzPSJjbHMtMSIgcG9pbnRzPSI4LjkgMi42MyAxMi4wMiAxMiAyMS4zOCAxMiA4LjkgMi42MyIvPjxwb2x5Z29uIGNsYXNzPSJjbHMtMiIgcG9pbnRzPSIyMS4zOCAxMiAxMi4wMiAxMiA4LjkgMjEuMzggMjEuMzggMTIiLz48cG9seWdvbiBjbGFzcz0iY2xzLTIiIHBvaW50cz0iMy40NCAyMS4zOCA2LjU3IDE5LjgxIDguOSAxMiA1Ljc4IDEyIDMuNDQgMjEuMzgiLz48cG9seWdvbiBjbGFzcz0iY2xzLTEiIHBvaW50cz0iMy40NCAyLjYzIDUuNzggMTIgOC45IDEyIDYuNTcgNC4xOSAzLjQ0IDIuNjMiLz48L2c+PC9nPjwvc3ZnPg==", "cloud_storage": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNHB4IiBoZWlnaHQ9IjI0cHgiIHZpZXdCb3g9IjAgMCAyNCAyNCI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiNhZWNiZmE7fS5jbHMtMntmaWxsOiM2NjlkZjY7fS5jbHMtM3tmaWxsOiM0Mjg1ZjQ7fS5jbHMtNHtmaWxsOiNmZmY7fTwvc3R5bGU+PC9kZWZzPjx0aXRsZT5JY29uXzI0cHhfQ2xvdWRTdG9yYWdlX0NvbG9yPC90aXRsZT48ZyBkYXRhLW5hbWU9IlByb2R1Y3QgSWNvbnMiPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMiIgeT0iNCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjciLz48cmVjdCBjbGFzcz0iY2xzLTIiIHg9IjIwIiB5PSI0IiB3aWR0aD0iMiIgaGVpZ2h0PSI3Ii8+PHBvbHlnb24gY2xhc3M9ImNscy0zIiBwb2ludHM9IjIyIDQgMjAgNCAyMCAxMSAyMiA0Ii8+PHJlY3QgY2xhc3M9ImNscy0yIiB4PSIyIiB5PSI0IiB3aWR0aD0iMiIgaGVpZ2h0PSI3Ii8+PHJlY3QgY2xhc3M9ImNscy00IiB4PSI2IiB5PSI3IiB3aWR0aD0iNiIgaGVpZ2h0PSIxIi8+PHJlY3QgY2xhc3M9ImNscy00IiB4PSIxNSIgeT0iNiIgd2lkdGg9IjMiIGhlaWdodD0iMyIgcng9IjEuNSIvPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMiIgeT0iMTMiIHdpZHRoPSIyMCIgaGVpZ2h0PSI3Ii8+PHJlY3QgY2xhc3M9ImNscy0yIiB4PSIyMCIgeT0iMTMiIHdpZHRoPSIyIiBoZWlnaHQ9IjciLz48cG9seWdvbiBjbGFzcz0iY2xzLTMiIHBvaW50cz0iMjIgMTMgMjAgMTMgMjAgMjAgMjIgMTMiLz48cmVjdCBjbGFzcz0iY2xzLTIiIHg9IjIiIHk9IjEzIiB3aWR0aD0iMiIgaGVpZ2h0PSI3Ii8+PHJlY3QgY2xhc3M9ImNscy00IiB4PSI2IiB5PSIxNiIgd2lkdGg9IjYiIGhlaWdodD0iMSIvPjxyZWN0IGNsYXNzPSJjbHMtNCIgeD0iMTUiIHk9IjE1IiB3aWR0aD0iMyIgaGVpZ2h0PSIzIiByeD0iMS41Ii8+PC9nPjwvc3ZnPg=="};
   const C = { build: "var(--build)", index: "var(--index)", ask: "var(--ask)", sec: "var(--sec)", plain: "var(--plain)" };
 
+  // Layout: left = people; GCP = three flow lanes (top to bottom) + AI and operations column + IAM strip.
   const zones = [
-    { x: 20, y: 60, w: 300, h: 920, label: "開發端與使用端", fill: "var(--zone)", stroke: "var(--line)" },
-    { x: 344, y: 60, w: 940, h: 920, label: "GCP 專案 · us-central1（Terraform 管理）", fill: "var(--zone-gcp)", stroke: "var(--zone-gcp-line)" },
-    { x: 364, y: 100, w: 900, h: 160, label: "建置", fill: "var(--panel)", stroke: "var(--zone-gcp-line)", sub: true },
-    { x: 364, y: 286, w: 620, h: 680, label: "執行與資料", fill: "var(--panel)", stroke: "var(--zone-gcp-line)", sub: true },
-    { x: 1004, y: 286, w: 260, h: 680, label: "身分與機密", fill: "var(--panel)", stroke: "var(--zone-gcp-line)", sub: true },
-    { x: 1304, y: 286, w: 280, h: 440, label: "Google AI（專案外部 · 選用）", fill: "var(--zone-ext)", stroke: "var(--zone-ext-line)", dash: true }
+    { x: 20, y: 60, w: 260, h: 1020, label: "使用者與開發者", fill: "var(--zone)", stroke: "var(--line)" },
+    { x: 300, y: 60, w: 1400, h: 1020, label: "GCP 專案 · asia-east1（Terraform 管理）", fill: "var(--zone-gcp)", stroke: "var(--zone-gcp-line)" },
+    { x: 320, y: 100, w: 1060, h: 150, label: "① 建置映像", fill: "var(--lane-build)", stroke: "var(--zone-gcp-line)", sub: true, color: C.build },
+    { x: 320, y: 280, w: 1060, h: 290, label: "② 建立索引", fill: "var(--lane-index)", stroke: "var(--zone-gcp-line)", sub: true, color: C.index },
+    { x: 320, y: 600, w: 1060, h: 300, label: "③ 使用者提問", fill: "var(--lane-ask)", stroke: "var(--zone-gcp-line)", sub: true, color: C.ask },
+    { x: 1400, y: 100, w: 280, h: 800, label: "AI 與維運", fill: "var(--lane-ops)", stroke: "var(--zone-gcp-line)", sub: true, color: C.sec },
+    { x: 320, y: 920, w: 1360, h: 140, label: "身分與權限（IAM）", fill: "var(--panel)", stroke: "var(--zone-gcp-line)", sub: true, color: C.sec }
   ];
 
   const nodes = [
-    { id: "dev", x: 40, y: 110, w: 260, h: 130, badge: "CLI", title: "開發者電腦", flows: "build sec",
-      lines: ["Terraform CLI · gcloud CLI", "terraform apply 建立資源", "Terraform state 存於本機"] },
-    { id: "gh", x: 40, y: 290, w: 260, h: 130, badge: "GH", title: "GitHub + Actions CI", flows: "build",
-      lines: ["push / PR：pytest", "terraform fmt · validate", "不含部署；私人 repo 不執行"] },
-    { id: "browser", x: 40, y: 600, w: 260, h: 130, badge: "WEB", title: "使用者瀏覽器", flows: "ask",
-      lines: ["web/app.js（原生 JS）", "對話僅保存於頁面記憶體", "POST /api/ask"] },
-    { id: "iap", x: 394, y: 560, w: 190, h: 140, badge: "IAP", title: "IAP 登入閘道", flows: "ask sec",
-      lines: ["Google 帳號登入", "檢查授權名單", "不需 Load Balancer"] },
-    { id: "cb", x: 394, y: 130, w: 280, h: 110, icon: "cloud_build", title: "Cloud Build", flows: "build",
-      lines: ["依 cloudbuild.yaml 建置映像", "未指定 _IMAGE_TAG 即中止", "僅建置映像，不含金鑰"] },
-    { id: "ar", x: 764, y: 130, w: 280, h: 110, icon: "artifact_registry", title: "Artifact Registry", flows: "build",
-      lines: ["repo：travel-policy-rag", "Docker · immutable tags", "相同 tag 不可覆寫"] },
-    { id: "job", x: 394, y: 330, w: 280, h: 180, icon: "cloud_run", title: "Cloud Run Job", flows: "build index sec",
-      lines: ["travel-policy-rag-index", "python -m app.indexer", "SA：travel-rag-indexer", "1 task · 不重試 · 逾時 600s", "手動觸發，不排程", "1 vCPU · 512Mi"] },
-    { id: "svc", x: 394, y: 740, w: 280, h: 210, icon: "cloud_run", title: "Cloud Run Service", flows: "build ask sec",
-      lines: ["travel-policy-rag（FastAPI）", "/api/ask · /api/health · 靜態頁", "SA：travel-rag-api", "0–1 實例 · 併發 4 · 逾時 60s", "1 vCPU · 512Mi · :8080", "存取由 IAP 驗證", "與 Job 共用同一映像"] },
-    { id: "bucket", x: 764, y: 330, w: 200, h: 560, icon: "cloud_storage", title: "Cloud Storage", flows: "index ask sec",
-      lines: ["私人 bucket", "uniform access", "強制公開存取防護", "soft delete 保留 0 天"] },
-    { id: "raw", x: 780, y: 450, w: 168, h: 120, title: "raw/*.md", flows: "index", inner: true,
-      lines: ["4 份虛構規定文件", "由 Terraform 上傳", "內容變更才重新上傳"] },
-    { id: "proc", x: 780, y: 650, w: 168, h: 130, title: "processed/", flows: "index ask", inner: true,
-      lines: ["index.json", "章節 + 向量 + 生效日", "Job 寫入", "Service 讀取"] },
-    { id: "secret", x: 1020, y: 330, w: 228, h: 170, icon: "secret_manager", title: "Secret Manager", flows: "sec index ask",
-      lines: ["travel-rag-gemini-", "api-key", "Terraform 僅建立 secret", "金鑰版本以 stdin 手動加入", "僅 gemini 模式注入", "Job／Service 環境變數"] },
-    { id: "iam", x: 1020, y: 530, w: 228, h: 360, title: "IAM 最小權限綁定", flows: "sec", list: true,
-      lines: ["授權使用者 → IAP 存取角色", "IAP 服務代理 → run.invoker", "維運人員 → run.jobsExecutor", "api SA → objectViewer", "indexer SA → objectViewer", "indexer SA → objectAdmin", "　條件：限 processed/ 前綴", "兩個 SA → secretAccessor", "　（僅 gemini 模式）", "Cloud Build SA → AR writer", "　（限本 repository）", "無 allUsers 公開授權", "Service、Job 各用獨立 SA"] },
-    { id: "gem", x: 1320, y: 330, w: 248, h: 230, badge: "AI", title: "Gemini Developer API", flows: "index ask", dash: true,
-      lines: ["generativelanguage", ".googleapis.com", "gemini-embedding-001", "768 維向量", "gemini-3.1-flash-lite", "金鑰經 x-goog-api-key 標頭", "逾時 15s；429 回報額度不足", "需設定 AI_MODE=gemini", "並確認 Free Tier"] }
+    { id: "dev", x: 36, y: 120, w: 228, h: 110, badge: "CLI", title: "開發者電腦", flows: "build",
+      lines: ["Terraform · gcloud CLI", "terraform apply 建立資源", "state 存於本機"] },
+    { id: "gh", x: 36, y: 270, w: 228, h: 110, badge: "GH", title: "GitHub + CI", flows: "build",
+      lines: ["push / PR：pytest", "Terraform 格式與語法檢查", "不含部署步驟"] },
+    { id: "admin", x: 36, y: 420, w: 228, h: 110, badge: "ADM", title: "管理部門", flows: "index sec",
+      lines: ["上傳、更新規定文件", "只能寫入 raw/"] },
+    { id: "browser", x: 36, y: 640, w: 228, h: 130, badge: "WEB", title: "員工瀏覽器", flows: "ask",
+      lines: ["約 200 人，尖峰 25 人", "web/app.js（原生 JS）", "對話僅存於頁面"] },
+    { id: "cb", x: 340, y: 130, w: 270, h: 100, icon: "cloud_build", title: "Cloud Build", flows: "build",
+      lines: ["依 cloudbuild.yaml 建置映像", "未指定 _IMAGE_TAG 即中止"] },
+    { id: "ar", x: 680, y: 130, w: 270, h: 100, icon: "artifact_registry", title: "Artifact Registry", flows: "build",
+      lines: ["repo：travel-policy-rag", "immutable tags，不可覆寫"] },
+    { id: "raw", x: 340, y: 330, w: 200, h: 150, icon: "cloud_storage", title: "Cloud Storage", flows: "index sec",
+      lines: ["raw/ 規定文件", "開啟版本保留", "改錯可以還原"] },
+    { id: "evwf", x: 590, y: 330, w: 230, h: 150, badge: "EV", title: "自動觸發", flows: "index",
+      lines: ["Eventarc 收到上傳事件", "Workflows 確認 raw/*.md", "啟動索引 Job"] },
+    { id: "job", x: 870, y: 320, w: 250, h: 200, icon: "cloud_run", title: "Cloud Run Job", flows: "build index sec",
+      lines: ["travel-policy-rag-index", "python -m app.indexer", "SA：travel-rag-indexer", "逾時 3600s · 重試 1 次", "1 vCPU · 1Gi"] },
+    { id: "proc", x: 1160, y: 330, w: 210, h: 150, icon: "cloud_storage", title: "Cloud Storage", flows: "index ask",
+      lines: ["processed/index.json", "章節＋向量＋生效日", "與 raw/ 同一 bucket"] },
+    { id: "iap", x: 590, y: 650, w: 230, h: 140, badge: "IAP", title: "IAP 登入閘道", flows: "ask sec",
+      lines: ["公司 Google 帳號登入", "強制兩步驟驗證", "不需 Load Balancer"] },
+    { id: "svc", x: 870, y: 630, w: 250, h: 240, icon: "cloud_run", title: "Cloud Run Service", flows: "build ask sec",
+      lines: ["FastAPI 服務 travel-policy-rag", "/api/ask · /api/health · 網頁", "SA：travel-rag-api", "實例 1–5 · 每個併發 10", "逾時 60s · 1 vCPU · 1Gi", "與 Job 共用同一映像"] },
+    { id: "vertex", x: 1416, y: 290, w: 248, h: 290, badge: "AI", title: "Vertex AI", flows: "index ask sec",
+      lines: ["以服務帳號呼叫，無 API key", "gemini-2.5-flash-lite", "gemini-embedding-001", "768 維向量", "區域：asia-east1", "（部署前確認模型提供）", "單次逾時 15s", "temperature 0.1"] },
+    { id: "ops", x: 1416, y: 650, w: 248, h: 190, badge: "OPS", title: "監控與稽核", flows: "sec",
+      lines: ["Cloud Monitoring 告警：", "回應 > 8s、5xx 錯誤、", "索引失敗 → 寄信通知", "Cloud Logging：", "記錄 IAP 存取", "不記錄提問內容"] },
+    { id: "iam", x: 336, y: 956, w: 1328, h: 96, flows: "sec", columns: [
+      ["員工群組 → IAP 存取角色", "IAP 服務代理 → run.invoker", "管理部門 → 只能寫 raw/"],
+      ["travel-rag-api → 讀 bucket、Vertex AI", "travel-rag-indexer → 只能寫 processed/", "travel-rag-reindex → 只能執行這個 Job"],
+      ["Cloud Build → 只能寫這個映像庫", "維運人員 → 手動執行 Job", "沒有 allUsers 公開授權、沒有 API key"]
+    ] }
   ];
 
+  // Edge index is used by the tour: 0 git push, 1 dev→cb, 2 cb→ar, 3 ar→job, 4 admin→raw,
+  // 5 raw→evwf, 6 evwf→job, 7 job→proc, 8 job→vertex, 9 proc→svc, 10 browser→iap, 11 iap→svc, 12 svc→vertex.
   const edges = [
-    { d: "M170,240 V290", label: "git push", lx: 214, ly: 265, flow: "build", color: C.plain },
-    { d: "M300,185 H394", label: "① 上傳原始碼", lx: 347, ly: 185, flow: "build", color: C.build },
-    { d: "M674,185 H764", label: "① push :TAG", lx: 719, ly: 185, flow: "build", color: C.build },
-    { d: "M904,240 V272 H534 V330", label: "① 拉取映像（Service 共用）", lx: 719, ly: 272, flow: "build", color: C.build },
-    { d: "M780,480 H674", label: "② 讀取 raw/", lx: 718, ly: 480, flow: "index", color: C.index },
-    { d: "M600,510 V690 H780", label: "② 寫入索引", lx: 690, ly: 690, flow: "index", color: C.index },
-    { d: "M780,760 H674", label: "③ 快取讀取", lx: 718, ly: 760, flow: "ask", color: C.ask },
-    { d: "M300,630 H394", label: "③ 開啟網址", lx: 347, ly: 630, flow: "ask", color: C.ask },
-    { d: "M489,700 V740", label: "③ 驗證通過", lx: 540, ly: 720, flow: "ask", color: C.ask },
-    { d: "M650,330 V316 H1294 V400 H1320", label: "② embedContent（逐章節）", lx: 870, ly: 316, flow: "index", color: C.index, dash: true },
-    { d: "M674,930 H1294 V520 H1320", label: "③ 查詢改寫 → Embedding → 生成（至多 3 次）", lx: 860, ly: 930, flow: "ask", color: C.ask, dash: true }
+    { d: "M150,230 V270", label: "git push", lx: 192, ly: 250, flow: "build", color: C.plain },
+    { d: "M264,175 H340", label: "① 提交", lx: 302, ly: 175, flow: "build", color: C.build },
+    { d: "M610,180 H680", label: "① push", lx: 645, ly: 180, flow: "build", color: C.build },
+    { d: "M815,230 V265 H995 V320", label: "① 拉取映像（Service 共用）", lx: 905, ly: 265, flow: "build", color: C.build },
+    { d: "M264,450 H340", label: "② 上傳", lx: 302, ly: 450, flow: "index", color: C.index },
+    { d: "M540,405 H590", label: "事件", lx: 565, ly: 405, flow: "index", color: C.index },
+    { d: "M820,405 H870", label: "執行", lx: 845, ly: 405, flow: "index", color: C.index },
+    { d: "M1120,405 H1160", label: "寫入", lx: 1140, ly: 405, flow: "index", color: C.index },
+    { d: "M1080,320 V300 H1416", label: "② Embedding（逐章節）", lx: 1250, ly: 300, flow: "index", color: C.index },
+    { d: "M1265,480 V750 H1120", label: "③ 讀取索引（快取）", lx: 1265, ly: 600, flow: "ask", color: C.ask },
+    { d: "M264,710 H590", label: "③ 開啟網址", lx: 430, ly: 710, flow: "ask", color: C.ask },
+    { d: "M820,720 H870", label: "驗證", lx: 845, ly: 720, flow: "ask", color: C.ask },
+    { d: "M1120,830 H1385 V560 H1416", label: "③ 改寫 → 向量 → 生成", lx: 1252, ly: 830, flow: "ask", color: C.ask }
   ];
 
   function el(tag, attrs, parent) {
@@ -329,6 +345,7 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
     t.textContent = value;
     return t;
   }
+  const isCode = line => /^[\x20-\x7e]+$/.test(line.replace(/[·→：（）]/g, ""));
 
   const defs = el("defs", {}, svg);
   const markerIds = {};
@@ -341,34 +358,33 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
   const zoneLayer = el("g", {}, svg);
   zones.forEach(z => {
     el("rect", { x: z.x, y: z.y, width: z.w, height: z.h, rx: z.sub ? 12 : 16, class: "zone",
-      style: `fill:${z.fill};stroke:${z.stroke};${z.dash ? "stroke-dasharray:8 6;" : ""}${z.sub ? "fill-opacity:.55;" : ""}` }, zoneLayer);
-    text(zoneLayer, z.x + 16, z.y + (z.sub ? 20 : 26), z.label, "zone-label");
+      style: `fill:${z.fill};stroke:${z.stroke};${z.sub ? "" : ""}` }, zoneLayer);
+    text(zoneLayer, z.x + 16, z.y + (z.sub ? 22 : 26), z.label, z.sub ? "lane-label" : "zone-label", z.color ? { style: "fill:" + z.color } : {});
   });
 
   const nodeLayer = el("g", {}, svg);
   nodes.forEach(n => {
     const g = el("g", { class: "node", "data-flows": n.flows, id: "node-" + n.id }, nodeLayer);
-    el("rect", { class: "box", x: n.x, y: n.y, width: n.w, height: n.h, rx: n.inner ? 8 : 10,
-      style: n.dash ? "stroke-dasharray:6 4" : "" }, g);
+    el("rect", { class: "box", x: n.x, y: n.y, width: n.w, height: n.h, rx: 10 }, g);
+    if (n.columns) {
+      const colW = (n.w - 28) / n.columns.length;
+      n.columns.forEach((col, ci) => col.forEach((line, li) => {
+        text(g, n.x + 14 + ci * colW, n.y + 28 + li * 26, line, isCode(line) ? "l code" : "l");
+      }));
+      return;
+    }
     let tx = n.x + 14;
     if (n.icon) {
       el("image", { href: ICONS[n.icon], x: n.x + 12, y: n.y + 12, width: 34, height: 34 }, g);
       tx = n.x + 56;
     } else if (n.badge) {
       const b = el("g", { class: "badge" }, g);
-      el("rect", { x: n.x + 12, y: n.y + 14, width: 34, height: 30, rx: 7 }, b);
-      text(b, n.x + 29, n.y + 33, n.badge, "", { "text-anchor": "middle" });
+      el("rect", { x: n.x + 12, y: n.y + 14, width: 36, height: 30, rx: 7 }, b);
+      text(b, n.x + 30, n.y + 33, n.badge, "", { "text-anchor": "middle" });
       tx = n.x + 56;
-    } else if (n.inner) {
-      tx = n.x + 10;
     }
-    text(g, tx, n.y + (n.inner ? 24 : 32), n.title, "t");
-    const step = n.list ? 24 : 18.5;
-    const start = n.inner ? 46 : 56;
-    n.lines.forEach((line, i) => {
-      const isCode = /^[\x20-\x7e]+$/.test(line.replace(/[·→：（）]/g, ""));
-      text(g, tx, n.y + start + i * step, line, isCode ? "l code" : "l");
-    });
+    text(g, tx, n.y + 32, n.title, "t");
+    n.lines.forEach((line, i) => text(g, tx, n.y + 56 + i * 18.5, line, isCode(line) ? "l code" : "l"));
   });
 
   const edgeLayer = el("g", {}, svg);
@@ -376,7 +392,7 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
   const edgeEls = [];
   const pathEls = [];
   edges.forEach(e => {
-    const g = el("g", { class: "edge" + (e.dash ? " dash" : ""), "data-flows": e.flow }, edgeLayer);
+    const g = el("g", { class: "edge", "data-flows": e.flow }, edgeLayer);
     pathEls.push(el("path", { d: e.d, style: "stroke:" + e.color, "marker-end": "url(#" + markerIds[e.color] + ")" }, g));
     edgeEls.push(g);
     const lg = el("g", { class: "elabel" }, g);
@@ -392,43 +408,42 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
   }));
 
   // ---------- Guided tour ----------
-  // Edge indexes follow the `edges` array: 0 git push, 1 dev→cb, 2 cb→ar, 3 ar→job,
-  // 4 raw→job, 5 job→proc, 6 proc→svc, 7 browser→iap, 8 iap→svc, 9 job→gem, 10 svc→gem.
-  // [index, true] plays an edge backwards (a response travelling home).
   const TOURS = {
     build: { name: "① 建置映像", color: C.build, steps: [
       { t: "提交程式碼至版本控制", e: [[0]], n: ["dev", "gh"],
         d: "開發者將程式碼 push 至 GitHub，由 GitHub Actions 執行 pytest 與 terraform validate。CI 僅負責檢查，不包含部署步驟。" },
       { t: "提交原始碼至 Cloud Build", e: [[1]], n: ["dev", "cb"],
-        d: "部署時由開發者手動執行 gcloud builds submit，將原始碼上傳至 Cloud Build。" },
+        d: "部署時由開發者執行 gcloud builds submit，將原始碼上傳至 Cloud Build。" },
       { t: "建置容器映像", e: [[2]], n: ["cb", "ar"],
         d: "Cloud Build 依 Dockerfile 建置容器映像並推送至 Artifact Registry。映像 tag 設為不可覆寫，確保每個版本皆可追溯。" },
       { t: "Job 與 Service 部署同一映像", e: [[3]], n: ["ar", "job", "svc"],
         d: "Cloud Run Job 與 Service 使用同一映像，僅啟動指令不同：Job 執行 python -m app.indexer 建立索引，Service 執行 FastAPI 提供問答服務。" }
     ] },
     index: { name: "② 建立索引", color: C.index, steps: [
-      { t: "上傳規定文件至 Cloud Storage", e: [], n: ["dev", "raw"],
-        d: "執行 terraform apply 時，四份 Markdown 規定文件會上傳至 Cloud Storage 的 raw/ 路徑；僅在內容變更時重新上傳。" },
-      { t: "讀取並切分原始文件", e: [[4]], n: ["raw", "job"],
-        d: "手動觸發 Cloud Run Job，讀取 raw/ 下的文件，依 ## 標題切分為 36 個章節，並記錄各規定的生效期間。" },
-      { t: "產生章節向量", e: [[9], [9, true]], n: ["job", "gem"],
-        d: "將各章節轉換為向量，作為語意相似度比對的依據。預設 offline 模式於 Job 內以 TF-IDF 計算；gemini 模式則逐章節呼叫 Gemini Embedding API（虛線代表選用）。" },
-      { t: "寫入索引檔", e: [[5]], n: ["job", "proc"],
-        d: "章節內容、向量與生效期間寫入 processed/index.json。Job 的寫入權限以 IAM Condition 限定於 processed/ 前綴，無法修改原始文件。" }
+      { t: "管理部門上傳規定", e: [[4]], n: ["admin", "raw"],
+        d: "管理部門將規定文件上傳至 Cloud Storage 的 raw/。權限只允許寫入 raw/；bucket 保留舊版本，規定改錯可以還原。" },
+      { t: "上傳事件觸發自動化", e: [[5]], n: ["raw", "evwf"],
+        d: "Eventarc 收到上傳事件後啟動 Workflows。Eventarc 無法直接啟動 Cloud Run Job，也不能依路徑過濾，所以由 Workflows 確認檔案位於 raw/ 且為 .md。" },
+      { t: "啟動索引 Job", e: [[6]], n: ["evwf", "job"],
+        d: "Workflows 以專用服務帳號啟動 Cloud Run Job，這個帳號只能執行這一個 Job。Job 讀取所有規定，依 ## 標題切分章節並記錄生效期間。" },
+      { t: "產生章節向量", e: [[8], [8, true]], n: ["job", "vertex"],
+        d: "Job 逐章節呼叫 Vertex AI 的 gemini-embedding-001，取得 768 維向量，作為語意相似度比對的依據。驗證使用服務帳號，不需要 API key。" },
+      { t: "寫入索引檔", e: [[7]], n: ["job", "proc"],
+        d: "章節、向量與生效期間寫入 processed/index.json。這次寫入也會產生事件，但 Workflows 只處理 raw/ 的檔案，因此不會無限循環。" }
     ] },
     ask: { name: "③ 使用者提問", color: C.ask, steps: [
-      { t: "使用者開啟網頁並提問", e: [[7]], n: ["browser", "iap"],
-        d: "使用者以瀏覽器開啟 Cloud Run 網址並輸入問題；請求先抵達 IAP（Identity-Aware Proxy），不會直接進入應用程式。" },
-      { t: "Google 帳號登入", e: [[8]], n: ["iap", "svc", "iam"],
-        d: "IAP 要求使用者以 Google 帳號登入，並確認帳號在授權名單內；未授權的請求在進入應用程式前即被拒絕。驗證通過後，IAP 以自身的服務代理轉送請求至 Cloud Run。使用者不需安裝任何工具。" },
-      { t: "載入索引", e: [[6]], n: ["proc", "svc"],
-        d: "FastAPI 讀取 processed/index.json 的 metadata。物件版本（generation）未變更時直接使用記憶體快取，避免每次請求重新下載。" },
-      { t: "檢索現行規定", e: [], n: ["svc"],
-        d: "先依生效期間排除已失效的規定（例如舊版住宿規定），再以向量相似度選出最相關的 3 個章節。" },
-      { t: "產生回答", e: [[10], [10, true]], n: ["svc", "gem"],
-        d: "offline 模式自章節中擷取最相關的句子作為回答；gemini 模式將 3 個章節提供給 Gemini，並限定僅能依據其內容回答（虛線代表選用）。" },
-      { t: "回傳答案與來源", e: [[8, true], [7, true]], n: ["svc", "iap", "browser"],
-        d: "回答連同文件名稱與章節一併回傳，供使用者查核依據。對話紀錄僅保存於瀏覽器，重新整理後即清除。" }
+      { t: "員工開啟網頁", e: [[10]], n: ["browser", "iap"],
+        d: "員工以瀏覽器開啟 Cloud Run 網址，請求先抵達 IAP，不會直接進入應用程式。" },
+      { t: "公司帳號登入", e: [[11]], n: ["iap", "svc", "iam"],
+        d: "IAP 要求以公司 Google 帳號登入並通過兩步驟驗證，確認帳號在授權名單內才放行。驗證通過後，IAP 以自身的服務代理轉送請求至 Cloud Run。" },
+      { t: "載入索引", e: [[9]], n: ["proc", "svc"],
+        d: "FastAPI 讀取 processed/index.json 的版本號（generation），沒有變更時直接使用記憶體快取，避免每次請求重新下載。" },
+      { t: "改寫問題並檢索", e: [[12], [12, true]], n: ["svc", "vertex"],
+        d: "Vertex AI 先把追問改寫成可單獨搜尋的問題並轉成向量。FastAPI 排除已失效的規定，再選出相似度最高的 3 個章節。" },
+      { t: "依章節生成回答", e: [[12], [12, true]], n: ["svc", "vertex"],
+        d: "Vertex AI 只根據這 3 個章節生成回答，temperature 設為 0.1 以維持穩定；找不到依據時回答查無資料。" },
+      { t: "回傳答案與來源", e: [[11, true], [10, true]], n: ["svc", "iap", "browser"],
+        d: "回答連同文件名稱與章節一併回傳，供員工查核依據。對話只保存在瀏覽器，伺服器不記錄提問內容。" }
     ] }
   };
   TOURS.story = { name: "完整故事", steps: ["build", "index", "ask"].flatMap(key =>
@@ -457,6 +472,7 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
     exit: document.getElementById("tour-exit"),
     panel: document.getElementById("tour")
   };
+  const IDLE_DESC = "建議先選「完整故事」：依序走過建置映像、建立索引、使用者提問三段流程。";
   const tour = { key: null, idx: 0, playing: false, token: 0, timer: null };
 
   function setDot(point, color) {
@@ -483,14 +499,11 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
 
   function highlight(step) {
     const focus = new Set(step.n);
-    if (focus.has("raw") || focus.has("proc")) focus.add("bucket");
     const active = new Set(step.e.map(([i]) => i));
     nodeEls.forEach(g => {
-      const id = g.id.replace("node-", "");
-      const hit = focus.has(id);
+      const hit = focus.has(g.id.replace("node-", ""));
       g.classList.toggle("dim", !hit);
-      // The bucket is only a container here; outline the folder that matters instead.
-      g.classList.toggle("focus", hit && !(id === "bucket" && step.n.indexOf("bucket") < 0));
+      g.classList.toggle("focus", hit);
       g.classList.toggle("pulse", hit && step.e.length === 0);
     });
     edgeEls.forEach((g, i) => { g.classList.toggle("dim", !active.has(i)); g.classList.toggle("active", active.has(i)); });
@@ -562,7 +575,7 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
     ui.panel.style.removeProperty("--tour");
     ui.chapter.textContent = "尚未開始"; ui.count.textContent = "";
     ui.title.textContent = "請選擇導覽路線";
-    ui.desc.textContent = "建議先選「完整故事」：依序走過建置映像、建立索引、使用者提問三段流程。";
+    ui.desc.textContent = IDLE_DESC;
     [ui.prev, ui.play, ui.next, ui.exit].forEach(b => { b.disabled = true; });
     ui.play.textContent = "▶ 播放";
   }

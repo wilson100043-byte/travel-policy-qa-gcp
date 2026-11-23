@@ -81,16 +81,16 @@ def test_unknown_and_old_policy_do_not_quote_stale_amount(monkeypatch, tmp_path)
     assert "300" in current_meal["answer"]
 
 
-def test_local_mode_never_uses_gemini_even_with_key(monkeypatch, tmp_path):
+def test_local_mode_never_calls_vertex_even_with_project(monkeypatch, tmp_path):
     monkeypatch.setenv("AI_MODE", "local")
     monkeypatch.setenv("STORAGE_MODE", "local")
-    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "demo-project")
     monkeypatch.setenv("INDEX_PATH", str(tmp_path / "index.json"))
 
     def fail_if_called(*args, **kwargs):
-        raise AssertionError("remote Gemini call in local mode")
+        raise AssertionError("remote Vertex AI call in local mode")
 
-    monkeypatch.setattr("app.gemini.urlopen", fail_if_called)
+    monkeypatch.setattr("app.vertex.urlopen", fail_if_called)
     response = client.post("/api/ask", json={"question": "住宿上限是多少？", "history": []})
     assert response.status_code == 200
     assert "2,500" in response.json()["answer"]

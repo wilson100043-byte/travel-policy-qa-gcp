@@ -1,7 +1,7 @@
 """Create and load a small JSON vector index from Markdown policies.
 
 Local use: python -m app.indexer
-Cloud Run Job: STORAGE_MODE=gcs AI_MODE=gemini ... python -m app.indexer
+Cloud Run Job: STORAGE_MODE=gcs AI_MODE=vertex ... python -m app.indexer
 """
 
 import json
@@ -13,9 +13,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List
 
-from app.config import Settings, load_settings, require_gemini_opt_in
+from app.config import Settings, load_settings, require_vertex
 from app.documents import Chunk, fingerprint_documents, load_local_documents, parse_document
-from app.gemini import GeminiClient
+from app.vertex import VertexClient
 
 
 SCHEMA_VERSION = 1
@@ -47,7 +47,7 @@ def build_index(chunks: List[Chunk], mode: str, settings: Settings, fingerprint:
     result = {
         "schema_version": SCHEMA_VERSION,
         "mode": mode,
-        "embedding_model": settings.gemini_embedding_model if mode == "gemini" else "char-ngram-tfidf-v1",
+        "embedding_model": settings.embedding_model if mode == "vertex" else "char-ngram-tfidf-v1",
         "source_fingerprint": fingerprint,
         "built_at": datetime.now(timezone.utc).isoformat(),
         "chunks": [],
@@ -60,8 +60,8 @@ def build_index(chunks: List[Chunk], mode: str, settings: Settings, fingerprint:
             for term, frequency in document_frequency.items()
         }
         vectors = [_normalized_tfidf(count, result["idf"]) for count in counts]
-    elif mode == "gemini":
-        client = GeminiClient(settings)  # Enforces all opt-in gates before first call.
+    elif mode == "vertex":
+        client = VertexClient(settings)  # Checks project and location before the first call.
         vectors = [
             client.embed(chunk.document + "\n" + chunk.section + "\n" + chunk.text,
                          "RETRIEVAL_DOCUMENT", title=chunk.document + " - " + chunk.section)
@@ -120,14 +120,14 @@ def save_index(index: dict, settings: Settings) -> None:
 def load_index(settings: Settings) -> dict:
     if settings.storage_mode == "local":
         if not settings.index_path.exists():
-            if settings.ai_mode == "gemini":
-                raise FileNotFoundError("Gemini index missing; run python -m app.indexer explicitly")
+            if settings.ai_mode == "vertex":
+                raise FileNotFoundError("Vertex index missing; run python -m app.indexer explicitly")
             return create_index(settings)
         index = json.loads(settings.index_path.read_text(encoding="utf-8"))
         fingerprint = fingerprint_documents(settings.docs_dir)
         if fingerprint and index.get("source_fingerprint") != fingerprint:
-            if settings.ai_mode == "gemini":
-                raise ValueError("policy documents changed; rebuild Gemini index explicitly")
+            if settings.ai_mode == "vertex":
+                raise ValueError("policy documents changed; rebuild the Vertex index explicitly")
             return create_index(settings)
     else:
         index = _load_gcs_index(settings)
@@ -162,7 +162,7 @@ def validate_index(index: dict, settings: Settings) -> None:
         raise ValueError("index format unsupported; rebuild index")
     if index.get("mode") != settings.ai_mode:
         raise ValueError("index mode does not match AI_MODE; rebuild index")
-    expected = settings.gemini_embedding_model if settings.ai_mode == "gemini" else "char-ngram-tfidf-v1"
+    expected = settings.embedding_model if settings.ai_mode == "vertex" else "char-ngram-tfidf-v1"
     if index.get("embedding_model") != expected:
         raise ValueError("index embedding model changed; rebuild index")
     if not isinstance(index.get("chunks"), list) or not index["chunks"]:
@@ -173,8 +173,8 @@ def validate_index(index: dict, settings: Settings) -> None:
 
 def create_index(settings: Settings = None) -> dict:
     settings = settings or load_settings()
-    if settings.ai_mode == "gemini":
-        require_gemini_opt_in(settings)
+    if settings.ai_mode == "vertex":
+        require_vertex(settings)
     chunks = read_source_chunks(settings)
     fingerprint = (fingerprint_documents(settings.docs_dir) or "") if settings.storage_mode == "local" else ""
     index = build_index(chunks, settings.ai_mode, settings, fingerprint)

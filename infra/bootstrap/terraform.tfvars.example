@@ -1,8 +1,7 @@
 project_id    = "YOUR_GCP_PROJECT_ID"
 bucket_name   = "YOUR_GLOBALLY_UNIQUE_BUCKET_NAME"
-region        = "us-central1"
+region        = "asia-east1"
 repository_id = "travel-policy-rag"
-secret_id     = "travel-rag-gemini-api-key"
 
 # Set to the actual Cloud Build build execution identity for your project.
 # Leave blank until verified; image push may otherwise lack permission.

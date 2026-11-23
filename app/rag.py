@@ -5,8 +5,8 @@ import re
 from datetime import date
 from typing import List, Optional
 
-from app.config import Settings, require_gemini_opt_in
-from app.gemini import GeminiClient
+from app.config import Settings, require_vertex
+from app.vertex import VertexClient
 from app.indexer import grams, load_index, vectorize_query
 
 
@@ -25,7 +25,7 @@ def _local_rewrite(question: str, history: list) -> str:
     return question
 
 
-def _gemini_rewrite(question: str, history: list, client: GeminiClient) -> str:
+def _vertex_rewrite(question: str, history: list, client: VertexClient) -> str:
     if not history:
         return question
     recent = history[-6:]
@@ -93,13 +93,13 @@ def _title_intent_bonus(question: str, chunk: dict) -> float:
     return bonus
 
 
-def search(question: str, index: dict, today: date, client: Optional[GeminiClient] = None) -> List[dict]:
+def search(question: str, index: dict, today: date, client: Optional[VertexClient] = None) -> List[dict]:
     retrieval_question = _expand_question(question)
     if index["mode"] == "local":
         query_vector = vectorize_query(retrieval_question, index)
     else:
         if client is None:
-            raise ValueError("Gemini client missing")
+            raise ValueError("Vertex client missing")
         query_vector = client.embed(retrieval_question, "RETRIEVAL_QUERY")
     candidates = []
     for chunk in index["chunks"]:
@@ -116,7 +116,7 @@ def search(question: str, index: dict, today: date, client: Optional[GeminiClien
         rank_score = score + min(overlap, 8) * 0.008 + _title_intent_bonus(question, chunk) if index["mode"] == "local" else score
         candidates.append((rank_score, overlap, chunk))
     candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    if index["mode"] == "gemini":
+    if index["mode"] == "vertex":
         # A weakly related vector alone is not evidence for a factual answer.
         candidates = [item for item in candidates if item[0] >= 0.35 and item[1] >= 1]
     return [chunk for _, _, chunk in candidates[:3]]
@@ -142,7 +142,7 @@ def _local_answer(question: str, matches: List[dict]) -> str:
     return "依據《{}》「{}」：{}".format(best["document"], best["section"], " ".join(selected)[:450])
 
 
-def _gemini_answer(question: str, matches: List[dict], client: GeminiClient) -> str:
+def _vertex_answer(question: str, matches: List[dict], client: VertexClient) -> str:
     excerpts = "\n\n".join(
         "[{}] 文件：{}；小節：{}\n{}".format(number, item["document"], item["section"], item["text"][:1600])
         for number, item in enumerate(matches, 1)
@@ -184,17 +184,17 @@ def ask(question: str, history: list, settings: Settings, today: Optional[date] 
     if settings.ai_mode == "local" and _unsupported_named_expense(question, index, today):
         return {"answer": NO_ANSWER, "sources": [], "mode": settings.ai_mode}
     client = None
-    if settings.ai_mode == "gemini":
-        require_gemini_opt_in(settings)
-        client = GeminiClient(settings)
-        query = _gemini_rewrite(question, history, client)
+    if settings.ai_mode == "vertex":
+        require_vertex(settings)
+        client = VertexClient(settings)
+        query = _vertex_rewrite(question, history, client)
     else:
         query = _local_rewrite(question, history)
     matches = search(query, index, today, client)
     if not matches:
         return {"answer": NO_ANSWER, "sources": [], "mode": settings.ai_mode}
-    if settings.ai_mode == "gemini":
-        answer = _gemini_answer(query, matches, client)
+    if settings.ai_mode == "vertex":
+        answer = _vertex_answer(query, matches, client)
         if answer == NO_ANSWER:
             return {"answer": answer, "sources": [], "mode": settings.ai_mode}
     else:

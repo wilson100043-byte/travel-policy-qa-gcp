@@ -1,17 +1,27 @@
 project_id  = "YOUR_GCP_PROJECT_ID"
 bucket_name = "YOUR_GLOBALLY_UNIQUE_BUCKET_NAME"
-region      = "us-central1"
-image_uri   = "us-central1-docker.pkg.dev/YOUR_GCP_PROJECT_ID/travel-policy-rag/app:YOUR_IMMUTABLE_TAG"
+region      = "asia-east1"
+image_uri   = "asia-east1-docker.pkg.dev/YOUR_GCP_PROJECT_ID/travel-policy-rag/app:YOUR_IMMUTABLE_TAG"
 
 service_name = "travel-policy-rag"
 job_name     = "travel-policy-rag-index"
-secret_id    = "travel-rag-gemini-api-key"
 
-# Safe default: no Gemini calls and no secret version required.
-ai_mode                    = "offline"
-gemini_free_tier_confirmed = false
+# Vertex AI answers by default. Confirm the models are offered in vertex_location first.
+ai_mode          = "vertex"
+vertex_location  = "asia-east1"
+generation_model = "gemini-2.5-flash-lite"
+embedding_model  = "gemini-embedding-001"
 
-# People who may sign in through IAP and use the web page (user: or group:).
-authorized_users = ["user:YOUR_EMAIL@example.com"]
-# People who may run the manual indexing Job.
-authorized_job_executors = ["user:YOUR_EMAIL@example.com"]
+# Peak capacity: max_instances x request_concurrency concurrent requests.
+min_instances       = 1
+max_instances       = 5
+request_concurrency = 10
+
+# Employees who may sign in through IAP.
+authorized_users = ["group:all-staff@example.com"]
+# Administration team who may upload policies to raw/.
+policy_admins = ["group:admin-dept@example.com"]
+# Maintainers who may run the index Job by hand.
+authorized_job_executors = ["group:it-ops@example.com"]
+# Receives monitoring alerts.
+alert_email = "it-ops@example.com"

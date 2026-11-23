@@ -7,7 +7,7 @@ import pytest
 
 from app import indexer
 from app.config import load_settings
-from app.gemini import GEMINI_TIMEOUT_SECONDS
+from app.vertex import VERTEX_TIMEOUT_SECONDS
 
 
 INDEX = {
@@ -71,16 +71,16 @@ def test_gcs_index_missing_raises(gcs):
 
 def test_invalid_gcs_index_is_not_cached(gcs):
     store, settings = gcs
-    store["index"] = dict(INDEX, mode="gemini")
+    store["index"] = dict(INDEX, mode="vertex")
     for _ in range(2):
         with pytest.raises(ValueError):
             indexer.load_index(settings)
     assert store["downloads"] == 2
 
 
-def test_gemini_calls_fit_cloud_run_timeout():
+def test_vertex_calls_fit_cloud_run_timeout():
     main_tf = (Path(__file__).resolve().parent.parent / "infra" / "app" / "main.tf").read_text(encoding="utf-8")
     service = main_tf.split('resource "google_cloud_run_v2_service" "api"', 1)[1].split("\nresource ", 1)[0]
     service_timeout = int(re.search(r'timeout\s*=\s*"(\d+)s"', service).group(1))
     # Rewrite, embed and generate run one after another for a follow-up question.
-    assert 3 * GEMINI_TIMEOUT_SECONDS < service_timeout
+    assert 3 * VERTEX_TIMEOUT_SECONDS < service_timeout

@@ -1,0 +1,26 @@
+# Started by Eventarc for every object finalized in the bucket. Eventarc cannot
+# filter by name prefix, so the workflow ignores everything outside raw/*.md,
+# including the index the Job itself writes to processed/ (no trigger loop).
+main:
+  params: [event]
+  steps:
+    - init:
+        assign:
+          - object_name: $${event.data.name}
+    - check_policy_file:
+        switch:
+          - condition: $${text.match_regex(object_name, "^raw/.+\\.md$")}
+            next: run_index_job
+        next: ignore
+    - run_index_job:
+        call: googleapis.run.v2.projects.locations.jobs.run
+        args:
+          name: "projects/${project_id}/locations/${region}/jobs/${job_name}"
+          connector_params:
+            # Start the Job and return; the Job reports its own success or failure.
+            skip_polling: true
+        result: execution
+    - started:
+        return: $${"index rebuild started for " + object_name}
+    - ignore:
+        return: $${"ignored " + object_name}

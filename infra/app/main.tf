@@ -1,21 +1,39 @@
 locals {
-  gemini_enabled = var.ai_mode == "gemini"
-  secret_path    = "projects/${var.project_id}/secrets/${var.secret_id}"
+  vertex_enabled = var.ai_mode == "vertex"
+
+  # Shared by the Service and the Job so both read the same bucket and models.
+  runtime_env = {
+    STORAGE_MODE            = "gcs"
+    GCS_BUCKET              = var.bucket_name
+    GCS_RAW_PREFIX          = "raw/"
+    GCS_PROCESSED_OBJECT    = "processed/index.json"
+    AI_MODE                 = var.ai_mode
+    GOOGLE_CLOUD_PROJECT    = var.project_id
+    VERTEX_LOCATION         = var.vertex_location
+    VERTEX_GENERATION_MODEL = var.generation_model
+    VERTEX_EMBEDDING_MODEL  = var.embedding_model
+  }
 }
+
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
+# ---------- Runtime identities (one per workload) ----------
 
 resource "google_service_account" "api" {
   project      = var.project_id
   account_id   = "travel-rag-api"
-  display_name = "Travel policy RAG API runtime"
+  display_name = "Travel policy Q&A API runtime"
 }
 
 resource "google_service_account" "indexer" {
   project      = var.project_id
   account_id   = "travel-rag-indexer"
-  display_name = "Travel policy RAG indexing job runtime"
+  display_name = "Travel policy Q&A indexing job runtime"
 }
 
-# Both workloads can read the documents/index in this one private bucket.
+# Both workloads can read the documents and index in the private bucket.
 resource "google_storage_bucket_iam_member" "api_read" {
   bucket = var.bucket_name
   role   = "roles/storage.objectViewer"
@@ -28,8 +46,8 @@ resource "google_storage_bucket_iam_member" "indexer_read" {
   member = "serviceAccount:${google_service_account.indexer.email}"
 }
 
-# The Job may replace only processed/ objects. Its separate viewer grant above
-# allows listing raw/; objectCreator alone cannot overwrite the existing index.
+# The Job may replace only processed/ objects. Its viewer grant above allows
+# listing raw/; objectCreator alone cannot overwrite the existing index.
 resource "google_storage_bucket_iam_member" "indexer_write_processed" {
   bucket = var.bucket_name
   role   = "roles/storage.objectAdmin"
@@ -42,27 +60,50 @@ resource "google_storage_bucket_iam_member" "indexer_write_processed" {
   }
 }
 
-resource "google_secret_manager_secret_iam_member" "api_secret_access" {
-  count = local.gemini_enabled ? 1 : 0
+# Vertex AI is called with the service account identity: no API key (NFR-9).
+resource "google_project_iam_member" "api_vertex" {
+  count = local.vertex_enabled ? 1 : 0
 
-  project   = var.project_id
-  secret_id = local.secret_path
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.api.email}"
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.api.email}"
 }
 
-resource "google_secret_manager_secret_iam_member" "indexer_secret_access" {
-  count = local.gemini_enabled ? 1 : 0
+resource "google_project_iam_member" "indexer_vertex" {
+  count = local.vertex_enabled ? 1 : 0
 
-  project   = var.project_id
-  secret_id = local.secret_path
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.indexer.email}"
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${google_service_account.indexer.email}"
 }
 
-data "google_project" "current" {
-  project_id = var.project_id
+# ---------- Policy publishing (NFR-13) ----------
+
+# The administration team can browse the bucket and replace policies in raw/
+# only; employees have no access to the bucket at all.
+resource "google_storage_bucket_iam_member" "policy_admin_view" {
+  for_each = toset(var.policy_admins)
+
+  bucket = var.bucket_name
+  role   = "roles/storage.objectViewer"
+  member = each.value
 }
+
+resource "google_storage_bucket_iam_member" "policy_admin_write_raw" {
+  for_each = toset(var.policy_admins)
+
+  bucket = var.bucket_name
+  role   = "roles/storage.objectAdmin"
+  member = each.value
+
+  condition {
+    title       = "write_raw_only"
+    description = "Limit policy uploads to the raw/ prefix"
+    expression  = "resource.name.startsWith('projects/_/buckets/${var.bucket_name}/objects/raw/')"
+  }
+}
+
+# ---------- Web page and API ----------
 
 resource "google_cloud_run_v2_service" "api" {
   project              = var.project_id
@@ -75,15 +116,17 @@ resource "google_cloud_run_v2_service" "api" {
   # their access before any request reaches the container. No load balancer.
   iap_enabled = true
 
+  # One instance stays warm so nobody waits for a cold start (NFR-3);
+  # 5 instances x 10 requests covers 25 concurrent users twice over (NFR-1).
   scaling {
-    min_instance_count = 0
-    max_instance_count = 1
+    min_instance_count = var.min_instances
+    max_instance_count = var.max_instances
   }
 
   template {
     service_account                  = google_service_account.api.email
     timeout                          = "60s"
-    max_instance_request_concurrency = 4
+    max_instance_request_concurrency = var.request_concurrency
 
     containers {
       image = var.image_uri
@@ -92,63 +135,27 @@ resource "google_cloud_run_v2_service" "api" {
         container_port = 8080
       }
 
+      # The whole index is held in memory; 1 GiB leaves room for a few thousand sections (NFR-6).
       resources {
         limits = {
           cpu    = "1"
-          memory = "512Mi"
+          memory = "1Gi"
         }
-      }
-
-      env {
-        name  = "STORAGE_MODE"
-        value = "gcs"
-      }
-      env {
-        name  = "GCS_BUCKET"
-        value = var.bucket_name
-      }
-      env {
-        name  = "GCS_RAW_PREFIX"
-        value = "raw/"
-      }
-      env {
-        name  = "GCS_PROCESSED_OBJECT"
-        value = "processed/index.json"
-      }
-      env {
-        name  = "AI_MODE"
-        value = var.ai_mode
-      }
-      env {
-        name  = "GEMINI_FREE_TIER_CONFIRMED"
-        value = var.gemini_free_tier_confirmed ? "1" : "0"
       }
 
       dynamic "env" {
-        for_each = local.gemini_enabled ? [1] : []
+        for_each = local.runtime_env
         content {
-          name = "GEMINI_API_KEY"
-          value_source {
-            secret_key_ref {
-              secret  = var.secret_id
-              version = "latest"
-            }
-          }
+          name  = env.key
+          value = env.value
         }
       }
-    }
-  }
-
-  lifecycle {
-    precondition {
-      condition     = !local.gemini_enabled || var.gemini_free_tier_confirmed
-      error_message = "Gemini mode requires an explicit Free Tier confirmation. This does not guarantee zero Google Cloud charges."
     }
   }
 
   depends_on = [
     google_storage_bucket_iam_member.api_read,
-    google_secret_manager_secret_iam_member.api_secret_access,
+    google_project_iam_member.api_vertex,
   ]
 }
 
@@ -162,7 +169,7 @@ resource "google_cloud_run_v2_service_iam_member" "iap_invoker" {
   member   = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-iap.iam.gserviceaccount.com"
 }
 
-# People who may sign in through IAP and use the web page.
+# Employees who may sign in through IAP and use the web page (NFR-7).
 resource "google_iap_web_cloud_run_service_iam_member" "users" {
   for_each = toset(var.authorized_users)
 
@@ -172,6 +179,8 @@ resource "google_iap_web_cloud_run_service_iam_member" "users" {
   role                   = "roles/iap.httpsResourceAccessor"
   member                 = each.value
 }
+
+# ---------- Index builder ----------
 
 resource "google_cloud_run_v2_job" "indexer" {
   project             = var.project_id
@@ -185,8 +194,9 @@ resource "google_cloud_run_v2_job" "indexer" {
 
     template {
       service_account = google_service_account.indexer.email
-      max_retries     = 0
-      timeout         = "600s"
+      max_retries     = 1
+      # Hundreds of documents are embedded one section at a time.
+      timeout = "3600s"
 
       containers {
         image   = var.image_uri
@@ -196,65 +206,29 @@ resource "google_cloud_run_v2_job" "indexer" {
         resources {
           limits = {
             cpu    = "1"
-            memory = "512Mi"
+            memory = "1Gi"
           }
         }
 
-        env {
-          name  = "STORAGE_MODE"
-          value = "gcs"
-        }
-        env {
-          name  = "GCS_BUCKET"
-          value = var.bucket_name
-        }
-        env {
-          name  = "GCS_RAW_PREFIX"
-          value = "raw/"
-        }
-        env {
-          name  = "GCS_PROCESSED_OBJECT"
-          value = "processed/index.json"
-        }
-        env {
-          name  = "AI_MODE"
-          value = var.ai_mode
-        }
-        env {
-          name  = "GEMINI_FREE_TIER_CONFIRMED"
-          value = var.gemini_free_tier_confirmed ? "1" : "0"
-        }
-
         dynamic "env" {
-          for_each = local.gemini_enabled ? [1] : []
+          for_each = local.runtime_env
           content {
-            name = "GEMINI_API_KEY"
-            value_source {
-              secret_key_ref {
-                secret  = var.secret_id
-                version = "latest"
-              }
-            }
+            name  = env.key
+            value = env.value
           }
         }
       }
     }
   }
 
-  lifecycle {
-    precondition {
-      condition     = !local.gemini_enabled || var.gemini_free_tier_confirmed
-      error_message = "Gemini mode requires an explicit Free Tier confirmation. This does not guarantee zero Google Cloud charges."
-    }
-  }
-
   depends_on = [
     google_storage_bucket_iam_member.indexer_read,
     google_storage_bucket_iam_member.indexer_write_processed,
-    google_secret_manager_secret_iam_member.indexer_secret_access,
+    google_project_iam_member.indexer_vertex,
   ]
 }
 
+# Maintainers may still run the Job by hand, for example after an image update.
 resource "google_cloud_run_v2_job_iam_member" "executor" {
   for_each = toset(var.authorized_job_executors)
 

@@ -17,7 +17,7 @@ images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/app:${_IMAGE_TAG}
 
 substitutions:
-  _REGION: us-central1
+  _REGION: asia-east1
   _REPOSITORY: travel-policy-rag
   _IMAGE_TAG: must-be-overridden
 

@@ -1,17 +1,19 @@
 locals {
   required_apis = toset([
+    "aiplatform.googleapis.com",
     "artifactregistry.googleapis.com",
     "cloudbuild.googleapis.com",
     "cloudresourcemanager.googleapis.com",
+    "eventarc.googleapis.com",
     "iam.googleapis.com",
     "iap.googleapis.com",
+    "logging.googleapis.com",
+    "monitoring.googleapis.com",
+    "pubsub.googleapis.com",
     "run.googleapis.com",
-    "secretmanager.googleapis.com",
     "storage.googleapis.com",
+    "workflows.googleapis.com",
   ])
-
-  policy_dir   = abspath("${path.module}/../../policy_docs")
-  policy_files = fileset(local.policy_dir, "*.md")
 }
 
 resource "google_project_service" "required" {
@@ -22,6 +24,9 @@ resource "google_project_service" "required" {
   disable_on_destroy = false
 }
 
+# raw/ holds the policies uploaded by the administration team; processed/ holds
+# the index written by the Cloud Run Job. Terraform does not upload policies, so
+# a later apply never overwrites what the team published (NFR-13).
 resource "google_storage_bucket" "documents" {
   name                        = var.bucket_name
   project                     = var.project_id
@@ -31,30 +36,29 @@ resource "google_storage_bucket" "documents" {
   public_access_prevention    = "enforced"
   force_destroy               = false
 
-  # Avoid retaining replaced demo objects for seven extra days by default.
-  soft_delete_policy {
-    retention_duration_seconds = 0
+  # Keep earlier versions so a wrongly edited policy can be restored (NFR-12).
+  versioning {
+    enabled = true
+  }
+
+  lifecycle_rule {
+    condition {
+      with_state         = "ARCHIVED"
+      num_newer_versions = var.policy_versions_to_keep
+    }
+    action {
+      type = "Delete"
+    }
   }
 
   depends_on = [google_project_service.required]
-}
-
-resource "google_storage_bucket_object" "raw_policy" {
-  for_each = local.policy_files
-
-  name         = "raw/${each.value}"
-  bucket       = google_storage_bucket.documents.name
-  source       = "${local.policy_dir}/${each.value}"
-  content_type = "text/markdown; charset=utf-8"
-  # Reupload a changed document, including when its filename stays the same.
-  source_md5hash = filemd5("${local.policy_dir}/${each.value}")
 }
 
 resource "google_artifact_registry_repository" "images" {
   project       = var.project_id
   location      = var.region
   repository_id = var.repository_id
-  description   = "RAG demo service and indexing job image"
+  description   = "Travel policy Q&A service and indexing job image"
   format        = "DOCKER"
 
   docker_config {
@@ -75,20 +79,3 @@ resource "google_artifact_registry_repository_iam_member" "cloud_build_writer" {
   role       = "roles/artifactregistry.writer"
   member     = "serviceAccount:${var.cloud_build_service_account_email}"
 }
-
-resource "google_secret_manager_secret" "gemini_api_key" {
-  project   = var.project_id
-  secret_id = var.secret_id
-
-  replication {
-    user_managed {
-      replicas {
-        location = var.region
-      }
-    }
-  }
-
-  depends_on = [google_project_service.required]
-}
-
-# No google_secret_manager_secret_version: the key must never enter Terraform state.

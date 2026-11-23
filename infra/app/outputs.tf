@@ -10,5 +10,10 @@ output "service_url" {
 
 output "index_job_name" {
   value       = google_cloud_run_v2_job.indexer.name
-  description = "Run manually after uploading policies or changing the image."
+  description = "Started automatically when a policy is uploaded to raw/; run by hand after an image update."
+}
+
+output "reindex_workflow" {
+  value       = google_workflows_workflow.reindex.name
+  description = "Workflow that Eventarc starts for each uploaded object."
 }

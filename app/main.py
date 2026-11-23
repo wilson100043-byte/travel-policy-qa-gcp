@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.config import load_settings
-from app.gemini import GeminiUnavailable
+from app.vertex import VertexUnavailable
 from app.rag import ask
 
 
@@ -36,7 +36,7 @@ def ask_route(request: AskRequest):
     try:
         history = [turn.model_dump() for turn in request.history[-6:]]
         return ask(request.question, history, settings)
-    except GeminiUnavailable as error:
+    except VertexUnavailable as error:
         raise HTTPException(status_code=503, detail=str(error)) from None
     except (FileNotFoundError, ValueError, RuntimeError):
         raise HTTPException(status_code=503, detail="問答索引尚未準備好，請檢查文件及執行索引建立。") from None
