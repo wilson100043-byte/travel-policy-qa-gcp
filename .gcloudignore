@@ -1,0 +1,28 @@
+# gcloud builds submit uploads source to Cloud Build. Never upload local keys,
+# Terraform state, plans, virtual environments, or generated indexes.
+.git/
+.env
+.env.*
+**/.env
+**/.env.*
+*.tfvars
+**/*.tfvars
+*.tfstate
+*.tfstate.*
+**/*.tfstate
+**/*.tfstate.*
+*.tfplan
+**/*.tfplan
+.terraform/
+**/.terraform/
+.venv/
+**/.venv/
+venv/
+**/venv/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+**/.pytest_cache/
+processed/index.json
+data/processed/
+.DS_Store

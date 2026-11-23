@@ -1,0 +1,17 @@
+.git
+.github
+.venv
+__pycache__
+.pytest_cache
+.env
+.env.*
+!.env.example
+*.pyc
+infra
+docs
+tests
+*.tfstate
+*.tfstate.*
+*.tfvars
+local_index
+processed

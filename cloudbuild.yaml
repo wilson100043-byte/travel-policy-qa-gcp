@@ -1,0 +1,25 @@
+# Manual build only. GitHub Actions never calls this file or deploys resources.
+# Pass a unique _IMAGE_TAG at submission; immutable tags prevent silent rewrites.
+steps:
+  - name: bash
+    entrypoint: bash
+    args:
+      - -ec
+      - test "${_IMAGE_TAG}" != "must-be-overridden"
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --tag
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/app:${_IMAGE_TAG}
+      - .
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/app:${_IMAGE_TAG}
+
+substitutions:
+  _REGION: us-central1
+  _REPOSITORY: travel-policy-rag
+  _IMAGE_TAG: must-be-overridden
+
+options:
+  logging: CLOUD_LOGGING_ONLY

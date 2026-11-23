@@ -1,0 +1,30 @@
+# Credentials and machine-specific settings
+.env
+.env.*
+!.env.example
+*.tfvars
+!*.tfvars.example
+*.tfstate
+*.tfstate.*
+*.tfplan
+.terraform/
+
+# Python and local test output
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Locally generated index; the cloud copy lives in Cloud Storage.
+processed/index.json
+data/processed/
+
+# Editor and OS output
+.DS_Store
+.idea/
+.vscode/

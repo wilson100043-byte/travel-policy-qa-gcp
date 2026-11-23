@@ -1,0 +1,296 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "差旅報帳規定問答｜Google Cloud 架構",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1880,
+      1150
+    ]
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "frontend",
+      "label": "使用者瀏覽器",
+      "sublabel": "載入前端；暫存近期對話",
+      "pos": [
+        70,
+        260
+      ],
+      "size": [
+        290,
+        104
+      ]
+    },
+    {
+      "id": "proxy",
+      "type": "security",
+      "label": "IAP 登入閘道",
+      "sublabel": "Google 帳號登入後轉送",
+      "pos": [
+        70,
+        405
+      ],
+      "size": [
+        290,
+        104
+      ]
+    },
+    {
+      "id": "repo",
+      "type": "external",
+      "label": "GitHub 儲存庫",
+      "sublabel": "程式碼 + 四份虛構規定",
+      "pos": [
+        70,
+        620
+      ],
+      "size": [
+        290,
+        104
+      ]
+    },
+    {
+      "id": "terraform",
+      "type": "external",
+      "label": "Terraform",
+      "sublabel": "建資源；上傳 raw/ 文件",
+      "pos": [
+        70,
+        765
+      ],
+      "size": [
+        290,
+        104
+      ]
+    },
+    {
+      "id": "service",
+      "type": "backend",
+      "label": "Cloud Run service",
+      "sublabel": "前端：HTML/CSS/JS；API：FastAPI /api/ask",
+      "pos": [
+        825,
+        280
+      ],
+      "size": [
+        255,
+        140
+      ]
+    },
+    {
+      "id": "index",
+      "type": "database",
+      "label": "Cloud Storage",
+      "sublabel": "processed/ 索引 JSON；章節、向量、生效日期",
+      "pos": [
+        1150,
+        284
+      ],
+      "size": [
+        255,
+        124
+      ]
+    },
+    {
+      "id": "raw",
+      "type": "database",
+      "label": "Cloud Storage",
+      "sublabel": "raw/ 原始 Markdown；四份虛構報帳規定",
+      "pos": [
+        500,
+        563
+      ],
+      "size": [
+        255,
+        124
+      ]
+    },
+    {
+      "id": "job",
+      "type": "backend",
+      "label": "Cloud Run Job",
+      "sublabel": "手動清理、切段；建立文件向量索引",
+      "pos": [
+        825,
+        563
+      ],
+      "size": [
+        255,
+        124
+      ]
+    },
+    {
+      "id": "build",
+      "type": "cloud",
+      "label": "Cloud Build",
+      "sublabel": "從 GitHub 程式碼；手動建置容器映像",
+      "pos": [
+        500,
+        850
+      ],
+      "size": [
+        255,
+        124
+      ]
+    },
+    {
+      "id": "registry",
+      "type": "cloud",
+      "label": "Artifact Registry",
+      "sublabel": "保存共用映像；供 Service / Job 執行",
+      "pos": [
+        825,
+        850
+      ],
+      "size": [
+        255,
+        124
+      ]
+    },
+    {
+      "id": "secret",
+      "type": "security",
+      "label": "Secret Manager",
+      "sublabel": "Gemini API key；供 Service / Job 讀取",
+      "pos": [
+        1150,
+        850
+      ],
+      "size": [
+        255,
+        124
+      ]
+    },
+    {
+      "id": "gemini",
+      "type": "external",
+      "label": "Gemini Developer API",
+      "sublabel": "選用：Embedding；追問改寫與答案生成；本次未呼叫",
+      "pos": [
+        1555,
+        500
+      ],
+      "size": [
+        275,
+        204
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Google Cloud · us-central1",
+      "wraps": [
+        "raw",
+        "job",
+        "index",
+        "service",
+        "build",
+        "registry",
+        "secret"
+      ],
+      "pad": 25
+    }
+  ],
+  "connections": [
+    {
+      "id": "browser_proxy",
+      "from": "browser",
+      "to": "proxy",
+      "label": "開啟網址／提問"
+    },
+    {
+      "id": "proxy_browser",
+      "from": "proxy",
+      "to": "browser",
+      "label": "前端／答案與來源"
+    },
+    {
+      "id": "proxy_service",
+      "from": "proxy",
+      "to": "service",
+      "label": "GET / · POST /api/ask"
+    },
+    {
+      "id": "service_proxy",
+      "from": "service",
+      "to": "proxy",
+      "label": "HTML/CSS/JS · 答案 JSON + 來源"
+    },
+    {
+      "id": "service_index",
+      "from": "service",
+      "to": "index",
+      "label": "搜尋現行索引"
+    },
+    {
+      "id": "index_service",
+      "from": "index",
+      "to": "service",
+      "label": "回傳相關小節"
+    },
+    {
+      "id": "repo_terraform",
+      "from": "repo",
+      "to": "terraform",
+      "variant": "dashed"
+    },
+    {
+      "id": "terraform_raw",
+      "from": "terraform",
+      "to": "raw",
+      "label": "上傳文件",
+      "variant": "dashed"
+    },
+    {
+      "id": "raw_job",
+      "from": "raw",
+      "to": "job",
+      "label": "讀取"
+    },
+    {
+      "id": "job_index",
+      "from": "job",
+      "to": "index",
+      "label": "寫入索引"
+    },
+    {
+      "id": "service_gemini",
+      "from": "service",
+      "to": "gemini",
+      "label": "改寫／問題向量／回答",
+      "variant": "dashed"
+    },
+    {
+      "id": "job_gemini",
+      "from": "job",
+      "to": "gemini",
+      "label": "文件 Embedding",
+      "variant": "dashed"
+    },
+    {
+      "id": "build_registry",
+      "from": "build",
+      "to": "registry",
+      "label": "推送",
+      "variant": "dashed"
+    },
+    {
+      "id": "registry_job",
+      "from": "registry",
+      "to": "job",
+      "label": "提供映像",
+      "variant": "dashed"
+    },
+    {
+      "id": "secret_job",
+      "from": "secret",
+      "to": "job",
+      "label": "注入 key",
+      "variant": "dashed"
+    }
+  ]
+}
