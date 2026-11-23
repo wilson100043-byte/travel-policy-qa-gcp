@@ -49,16 +49,26 @@ variable "ai_mode" {
   }
 }
 
+# Google's docs confirm pay-as-you-go use of gemini-3.5-flash-lite on the "us"
+# multi-region, and of gemini-embedding-001 on us-central1. Neither model is
+# listed for Taiwan, so AI inference is processed in the United States while
+# documents, the index and compute stay in asia-east1 (see REQUIREMENTS NFR-8).
 variable "vertex_location" {
-  description = "Vertex AI endpoint location. Confirm the chosen models are offered there before deploying; Google's location tables did not clearly list Taiwan at design time."
+  description = "Vertex AI location for the generation model: a region, or the us / eu multi-region."
   type        = string
-  default     = "asia-east1"
+  default     = "us"
+}
+
+variable "vertex_embedding_location" {
+  description = "Vertex AI location for the embedding model. gemini-embedding-001 does not support the us / eu multi-region endpoints."
+  type        = string
+  default     = "us-central1"
 }
 
 variable "generation_model" {
   description = "Vertex AI Gemini model for query rewriting and answers."
   type        = string
-  default     = "gemini-2.5-flash-lite"
+  default     = "gemini-3.5-flash-lite"
 }
 
 variable "embedding_model" {

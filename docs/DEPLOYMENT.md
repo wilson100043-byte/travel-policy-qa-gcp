@@ -6,7 +6,7 @@
 
 - 公司使用 Google Workspace，GCP 專案屬於公司的 Google Cloud 組織。這樣 IAP 可以使用 Google 管理的 OAuth client，員工以公司帳號登入，不需手動建立 OAuth 設定。
 - 在 Google Workspace 管理控制台**強制所有員工開啟兩步驟驗證**（NFR-7）。這是 Workspace 的帳號政策，不由 Terraform 管理。
-- **確認 Vertex AI 模型的提供區域。**設計時官方的區域表格沒有明確列出台灣（asia-east1）可用的 Gemini 與 Embedding 模型。部署前請在 Vertex AI 的區域頁面或 Model Garden 確認；若台灣沒有提供，改用最近、且提供資料落地承諾的區域，並將 `vertex_location` 設為該區域。文件、索引與執行環境仍留在台灣，只有 AI 推論的處理地點不同。不要使用 `global` 端點，它不保證資料處理地點。
+- **Vertex AI 的模型與區域。**只採用官方文件明確列出可用的組合：生成用 `gemini-3.5-flash-lite`（`us` 多區域），Embedding 用 `gemini-embedding-001`（`us-central1`）。官方沒有列出台灣提供這些模型，因此 AI 推論在美國處理；文件、索引與執行環境仍留在台灣。不使用 `global` 端點，因為它不保證資料處理地點。
 
 ## 對應架構
 

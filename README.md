@@ -107,6 +107,6 @@ GitHub Actions 在 push 與 Pull Request 時執行上述測試，以及 Terrafor
 ## 已知限制
 
 - 雲端部分只通過 Terraform 靜態檢查，尚未實際部署；Vertex AI 的回答品質未經驗證。
-- Vertex AI 的 Gemini 與 Embedding 模型是否在台灣區域提供，部署前需要確認，見[部署文件](docs/DEPLOYMENT.md)。
+- 文件與執行環境放在台灣，但官方沒有列出台灣提供所需的 Gemini 模型，所以 AI 推論採用官方確認可用的美國區域，見[需求規格](docs/REQUIREMENTS.md)。
 - 規定為全公司共用，沒有依部門區分文件權限；也不提供報銷申請等交易功能。
 - 規定文件為虛構資料，只用來展示系統流程。

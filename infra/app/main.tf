@@ -3,15 +3,16 @@ locals {
 
   # Shared by the Service and the Job so both read the same bucket and models.
   runtime_env = {
-    STORAGE_MODE            = "gcs"
-    GCS_BUCKET              = var.bucket_name
-    GCS_RAW_PREFIX          = "raw/"
-    GCS_PROCESSED_OBJECT    = "processed/index.json"
-    AI_MODE                 = var.ai_mode
-    GOOGLE_CLOUD_PROJECT    = var.project_id
-    VERTEX_LOCATION         = var.vertex_location
-    VERTEX_GENERATION_MODEL = var.generation_model
-    VERTEX_EMBEDDING_MODEL  = var.embedding_model
+    STORAGE_MODE              = "gcs"
+    GCS_BUCKET                = var.bucket_name
+    GCS_RAW_PREFIX            = "raw/"
+    GCS_PROCESSED_OBJECT      = "processed/index.json"
+    AI_MODE                   = var.ai_mode
+    GOOGLE_CLOUD_PROJECT      = var.project_id
+    VERTEX_LOCATION           = var.vertex_location
+    VERTEX_EMBEDDING_LOCATION = var.vertex_embedding_location
+    VERTEX_GENERATION_MODEL   = var.generation_model
+    VERTEX_EMBEDDING_MODEL    = var.embedding_model
   }
 }
 

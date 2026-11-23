@@ -41,21 +41,25 @@ class VertexClient:
             self._credentials.refresh(AuthRequest())
         return self._credentials.token
 
-    def _url(self, model: str, method: str) -> str:
-        location = self.settings.vertex_location
-        host = "aiplatform.googleapis.com" if location == "global" else location + "-aiplatform.googleapis.com"
+    def _url(self, model: str, method: str, location: str) -> str:
+        if location == "global":
+            host = "aiplatform.googleapis.com"
+        elif location in {"us", "eu"}:
+            host = "aiplatform.{}.rep.googleapis.com".format(location)  # multi-region endpoint
+        else:
+            host = location + "-aiplatform.googleapis.com"
         return "https://{}/v1/projects/{}/locations/{}/publishers/google/models/{}:{}".format(
             host, self.settings.gcp_project, location, model, method
         )
 
-    def _post(self, model: str, method: str, payload: dict) -> dict:
+    def _post(self, model: str, method: str, location: str, payload: dict) -> dict:
         try:
             token = self._token()
         except Exception:
             # Credential details must not reach the browser.
             raise VertexUnavailable("AI 服務驗證失敗，請通知系統管理者。") from None
         request = Request(
-            self._url(model, method),
+            self._url(model, method, location),
             data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
             headers={"Content-Type": "application/json", "Authorization": "Bearer " + token},
             method="POST",
@@ -78,7 +82,7 @@ class VertexClient:
             "instances": [instance],
             "parameters": {"outputDimensionality": EMBEDDING_DIMENSIONS, "autoTruncate": True},
         }
-        result = self._post(self.settings.embedding_model, "predict", payload)
+        result = self._post(self.settings.embedding_model, "predict", self.settings.vertex_embedding_location, payload)
         try:
             vector = result["predictions"][0]["embeddings"]["values"]
             if not vector or not all(isinstance(value, (int, float)) for value in vector):
@@ -92,7 +96,7 @@ class VertexClient:
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0.1, "maxOutputTokens": 600},
         }
-        result = self._post(self.settings.generation_model, "generateContent", payload)
+        result = self._post(self.settings.generation_model, "generateContent", self.settings.vertex_location, payload)
         try:
             text = "".join(
                 part.get("text", "")

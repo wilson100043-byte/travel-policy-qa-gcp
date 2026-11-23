@@ -20,6 +20,7 @@ class Settings:
     gcs_processed_object: str
     gcp_project: str
     vertex_location: str
+    vertex_embedding_location: str
     generation_model: str
     embedding_model: str
 
@@ -45,8 +46,11 @@ def load_settings() -> Settings:
         gcs_raw_prefix=os.getenv("GCS_RAW_PREFIX", "raw/").strip("/") + "/",
         gcs_processed_object=os.getenv("GCS_PROCESSED_OBJECT", "processed/index.json").strip("/"),
         gcp_project=os.getenv("GOOGLE_CLOUD_PROJECT", "").strip(),
-        vertex_location=os.getenv("VERTEX_LOCATION", "asia-east1").strip(),
-        generation_model=os.getenv("VERTEX_GENERATION_MODEL", "gemini-2.5-flash-lite"),
+        # Model availability was confirmed for these locations in Google's docs:
+        # gemini-3.5-flash-lite on the "us" multi-region, gemini-embedding-001 on us-central1.
+        vertex_location=os.getenv("VERTEX_LOCATION", "us").strip(),
+        vertex_embedding_location=os.getenv("VERTEX_EMBEDDING_LOCATION", "us-central1").strip(),
+        generation_model=os.getenv("VERTEX_GENERATION_MODEL", "gemini-3.5-flash-lite"),
         embedding_model=os.getenv("VERTEX_EMBEDDING_MODEL", "gemini-embedding-001"),
     )
 
@@ -56,5 +60,5 @@ def require_vertex(settings: Settings) -> None:
         raise ValueError("Vertex AI calls require AI_MODE=vertex")
     if not settings.gcp_project:
         raise ValueError("Vertex AI mode needs GOOGLE_CLOUD_PROJECT")
-    if not settings.vertex_location:
-        raise ValueError("Vertex AI mode needs VERTEX_LOCATION")
+    if not settings.vertex_location or not settings.vertex_embedding_location:
+        raise ValueError("Vertex AI mode needs VERTEX_LOCATION and VERTEX_EMBEDDING_LOCATION")

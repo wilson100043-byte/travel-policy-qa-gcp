@@ -246,9 +246,9 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
       <h3><span class="tag tip">已處理</span>索引快取與逾時預算</h3>
       <p style="margin:0;font-size:14.5px">索引依 Cloud Storage 的版本號快取，不再每題下載；AI 單次逾時 15 秒，三次呼叫共 45 秒，低於 Cloud Run 的 60 秒上限，並有測試檢查兩邊設定。</p>
       <h3><span class="tag tip">已處理</span>依需求重新設計</h3>
-      <p style="margin:0;font-size:14.5px">容量改為 1–5 個實例、每個併發 10；資料移到台灣；改用 Vertex AI，不再使用 API key；上傳後自動重建索引；加入監控、稽核與版本保留；Terraform 不再覆蓋管理部門上傳的規定。</p>
-      <h3><span class="tag warn">待確認</span>Vertex AI 的台灣區域</h3>
-      <p style="margin:0;font-size:14.5px">官方區域表格沒有明確列出台灣可用的 Gemini 與 Embedding 模型。部署前要確認；若不提供，改用最近且有資料落地承諾的區域。文件與執行環境仍留在台灣。</p>
+      <p style="margin:0;font-size:14.5px">容量改為 1–5 個實例、每個併發 10；文件與執行環境移到台灣；改用 Vertex AI，不再使用 API key；上傳後自動重建索引；加入監控、稽核與版本保留；Terraform 不再覆蓋管理部門上傳的規定。</p>
+      <h3><span class="tag warn">取捨</span>AI 推論在美國處理</h3>
+      <p style="margin:0;font-size:14.5px">官方文件沒有列出台灣提供所需的 Gemini 模型，所以只採用官方明確確認可用的組合：生成用 <code>gemini-3.5-flash-lite</code>（<code>us</code> 多區域），Embedding 用 <code>gemini-embedding-001</code>（<code>us-central1</code>）。文件、索引與執行環境仍留在台灣；官方日後列出台灣或鄰近區域時，只要調整兩個 Terraform 變數。</p>
       <h3><span class="tag warn">其他限制</span></h3>
       <ul>
         <li>短時間上傳多個檔案時，每個檔案都會啟動一次 Job；結果一致，但會重複執行。</li>
@@ -306,7 +306,7 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
     { id: "svc", x: 870, y: 630, w: 250, h: 240, icon: "cloud_run", title: "Cloud Run Service", flows: "build ask sec",
       lines: ["FastAPI 服務 travel-policy-rag", "/api/ask · /api/health · 網頁", "SA：travel-rag-api", "實例 1–5 · 每個併發 10", "逾時 60s · 1 vCPU · 1Gi", "與 Job 共用同一映像"] },
     { id: "vertex", x: 1416, y: 290, w: 248, h: 290, badge: "AI", title: "Vertex AI", flows: "index ask sec",
-      lines: ["以服務帳號呼叫，無 API key", "gemini-2.5-flash-lite", "gemini-embedding-001", "768 維向量", "區域：asia-east1", "（部署前確認模型提供）", "單次逾時 15s", "temperature 0.1"] },
+      lines: ["以服務帳號呼叫，無 API key", "生成：gemini-3.5-flash-lite", "　區域 us（美國多區域）", "向量：gemini-embedding-001", "　區域 us-central1", "768 維 · 單次逾時 15s", "temperature 0.1", "只用官方確認可用的組合"] },
     { id: "ops", x: 1416, y: 650, w: 248, h: 190, badge: "OPS", title: "監控與稽核", flows: "sec",
       lines: ["Cloud Monitoring 告警：", "回應 > 8s、5xx 錯誤、", "索引失敗 → 寄信通知", "Cloud Logging：", "記錄 IAP 存取", "不記錄提問內容"] },
     { id: "iam", x: 336, y: 956, w: 1328, h: 96, flows: "sec", columns: [
@@ -427,7 +427,7 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
       { t: "啟動索引 Job", e: [[6]], n: ["evwf", "job"],
         d: "Workflows 以專用服務帳號啟動 Cloud Run Job，這個帳號只能執行這一個 Job。Job 讀取所有規定，依 ## 標題切分章節並記錄生效期間。" },
       { t: "產生章節向量", e: [[8], [8, true]], n: ["job", "vertex"],
-        d: "Job 逐章節呼叫 Vertex AI 的 gemini-embedding-001，取得 768 維向量，作為語意相似度比對的依據。驗證使用服務帳號，不需要 API key。" },
+        d: "Job 逐章節呼叫 Vertex AI 的 gemini-embedding-001（us-central1），取得 768 維向量，作為語意相似度比對的依據。驗證使用服務帳號，不需要 API key。" },
       { t: "寫入索引檔", e: [[7]], n: ["job", "proc"],
         d: "章節、向量與生效期間寫入 processed/index.json。這次寫入也會產生事件，但 Workflows 只處理 raw/ 的檔案，因此不會無限循環。" }
     ] },
@@ -441,7 +441,7 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
       { t: "改寫問題並檢索", e: [[12], [12, true]], n: ["svc", "vertex"],
         d: "Vertex AI 先把追問改寫成可單獨搜尋的問題並轉成向量。FastAPI 排除已失效的規定，再選出相似度最高的 3 個章節。" },
       { t: "依章節生成回答", e: [[12], [12, true]], n: ["svc", "vertex"],
-        d: "Vertex AI 只根據這 3 個章節生成回答，temperature 設為 0.1 以維持穩定；找不到依據時回答查無資料。" },
+        d: "Vertex AI 的 gemini-3.5-flash-lite 只根據這 3 個章節生成回答，temperature 設為 0.1 以維持穩定；找不到依據時回答查無資料。" },
       { t: "回傳答案與來源", e: [[11, true], [10, true]], n: ["svc", "iap", "browser"],
         d: "回答連同文件名稱與章節一併回傳，供員工查核依據。對話只保存在瀏覽器，伺服器不記錄提問內容。" }
     ] }

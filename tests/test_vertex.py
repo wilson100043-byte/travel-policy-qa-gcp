@@ -12,7 +12,7 @@ from app.vertex import EMBEDDING_DIMENSIONS, VertexClient, VertexUnavailable
 
 @pytest.fixture
 def client(monkeypatch):
-    settings = replace(load_settings(), ai_mode="vertex", gcp_project="demo-project", vertex_location="asia-east1")
+    settings = replace(load_settings(), ai_mode="vertex", gcp_project="demo-project")
     instance = VertexClient(settings)
     # No real credentials: the token lookup is replaced for every test.
     monkeypatch.setattr(instance, "_token", lambda: "test-token")
@@ -31,14 +31,14 @@ def fake_urlopen(monkeypatch, reply, calls):
     monkeypatch.setattr(vertex, "urlopen", _open)
 
 
-def test_embed_calls_regional_predict_endpoint(client, monkeypatch):
+def test_embed_calls_us_central1_predict_endpoint(client, monkeypatch):
     calls = []
     fake_urlopen(monkeypatch, {"predictions": [{"embeddings": {"values": [0.1, 0.2]}}]}, calls)
 
     assert client.embed("住宿上限", "RETRIEVAL_DOCUMENT", title="住宿規定") == [0.1, 0.2]
     call = calls[0]
     assert call["url"] == (
-        "https://asia-east1-aiplatform.googleapis.com/v1/projects/demo-project/locations/asia-east1"
+        "https://us-central1-aiplatform.googleapis.com/v1/projects/demo-project/locations/us-central1"
         "/publishers/google/models/gemini-embedding-001:predict"
     )
     assert call["auth"] == "Bearer test-token"
@@ -54,13 +54,16 @@ def test_query_embedding_omits_title(client, monkeypatch):
     assert "title" not in calls[0]["body"]["instances"][0]
 
 
-def test_generate_reads_candidate_text(client, monkeypatch):
+def test_generate_uses_us_multi_region_endpoint(client, monkeypatch):
     calls = []
     reply = {"candidates": [{"content": {"parts": [{"text": "每晚上限 2,500 元。"}]}}]}
     fake_urlopen(monkeypatch, reply, calls)
 
     assert client.generate("問題") == "每晚上限 2,500 元。"
-    assert calls[0]["url"].endswith("/models/gemini-2.5-flash-lite:generateContent")
+    assert calls[0]["url"] == (
+        "https://aiplatform.us.rep.googleapis.com/v1/projects/demo-project/locations/us"
+        "/publishers/google/models/gemini-3.5-flash-lite:generateContent"
+    )
     assert calls[0]["body"]["generationConfig"]["temperature"] == 0.1
 
 
@@ -74,6 +77,12 @@ def test_rate_limit_becomes_user_message(client, monkeypatch):
 
 
 def test_global_location_uses_global_host(monkeypatch):
-    settings = replace(load_settings(), ai_mode="vertex", gcp_project="demo-project", vertex_location="global")
-    url = VertexClient(settings)._url("gemini-2.5-flash-lite", "generateContent")
+    settings = replace(load_settings(), ai_mode="vertex", gcp_project="demo-project")
+    url = VertexClient(settings)._url("gemini-3.5-flash-lite", "generateContent", "global")
     assert url.startswith("https://aiplatform.googleapis.com/v1/projects/demo-project/locations/global/")
+
+
+def test_regional_location_uses_regional_host():
+    settings = replace(load_settings(), ai_mode="vertex", gcp_project="demo-project")
+    url = VertexClient(settings)._url("gemini-3.5-flash", "generateContent", "asia-northeast1")
+    assert url.startswith("https://asia-northeast1-aiplatform.googleapis.com/v1/projects/demo-project/locations/asia-northeast1/")

@@ -17,7 +17,7 @@
 | 使用者介面 | Cloud Run Service（與 API 同一服務） | 提問、顯示答案與來源；對話只存在瀏覽器（FR-6）。 | 只有一頁，不需另外架設網站或處理 CORS。 |
 | 登入 | IAP | 員工以公司 Google 帳號登入，名單外的人進不來（NFR-7）。 | 直接啟用於 Cloud Run，不需 Load Balancer；採零信任做法，不限制連線地點。 |
 | 問答 API | Cloud Run Service（FastAPI） | 改寫追問、檢索現行規定、呼叫 Vertex AI 生成答案。 | 免管伺服器、依流量自動擴充；保留 1 個實例避免冷啟動（NFR-1、NFR-3）。 |
-| AI 模型 | Vertex AI（Gemini、gemini-embedding-001） | 文件與問題的向量、追問改寫、生成回答。 | 以服務帳號驗證，不需要 API key（NFR-9）。 |
+| AI 模型 | Vertex AI（gemini-3.5-flash-lite、gemini-embedding-001） | 文件與問題的向量、追問改寫、生成回答。 | 以服務帳號驗證，不需要 API key（NFR-9）；只用官方確認可用的模型與區域。 |
 | 文件與索引儲存 | Cloud Storage | `raw/` 放規定文件，`processed/` 放索引 JSON；開啟版本保留（NFR-12）。 | 數百份文件、數千個章節，一個 JSON 讀進記憶體即可，不需向量資料庫（NFR-6）。 |
 | 建立索引 | Cloud Run Job | 切分章節、產生向量、寫入索引。 | 偶爾執行的批次工作，跑完就結束，不佔常駐資源。 |
 | 自動觸發 | Eventarc＋Workflows | 管理部門上傳規定後，自動啟動索引 Job（FR-5、NFR-5）。 | Eventarc 無法直接啟動 Job，官方做法是經由 Workflows。 |
@@ -54,7 +54,7 @@
 - 服務不公開：只有 IAP 授權名單內、已開兩步驟驗證的員工能進入。
 - 每個工作負載各用一個服務帳號，只拿需要的權限；Job 只能寫 `processed/`，管理部門只能寫 `raw/`。
 - 沒有長期 API key，也就不需要 Secret Manager。
-- 資料存放在台灣（asia-east1）。Vertex AI 的推論地點要在部署前確認，見[部署文件](DEPLOYMENT.md)。
+- 文件、索引與執行環境存放在台灣（asia-east1）。AI 推論只採用官方文件確認可用的區域，目前在美國處理，見[需求規格](REQUIREMENTS.md)第 5 節。
 
 ## 編輯與重產生
 

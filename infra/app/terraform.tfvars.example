@@ -6,11 +6,13 @@ image_uri   = "asia-east1-docker.pkg.dev/YOUR_GCP_PROJECT_ID/travel-policy-rag/a
 service_name = "travel-policy-rag"
 job_name     = "travel-policy-rag-index"
 
-# Vertex AI answers by default. Confirm the models are offered in vertex_location first.
-ai_mode          = "vertex"
-vertex_location  = "asia-east1"
-generation_model = "gemini-2.5-flash-lite"
-embedding_model  = "gemini-embedding-001"
+# Vertex AI answers by default. These model and location pairs are confirmed in
+# Google's docs; AI inference is processed in the United States.
+ai_mode                   = "vertex"
+vertex_location           = "us"
+vertex_embedding_location = "us-central1"
+generation_model          = "gemini-3.5-flash-lite"
+embedding_model           = "gemini-embedding-001"
 
 # Peak capacity: max_instances x request_concurrency concurrent requests.
 min_instances       = 1
