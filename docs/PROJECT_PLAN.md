@@ -54,7 +54,7 @@ Terraform 分成兩階段，因為 Cloud Run 需要先有程式映像，Secret M
 
 - 必做：Python 原始碼、GitHub 儲存庫、雲端架構圖、README（用途、功能、服務選擇理由、執行與部署步驟）。架構圖以實際程式及 Terraform 為準。
 - 已選加分：簡單前端、Terraform IaC。
-- 已選加分：GitHub Actions 在提交時執行 Python 測試與 Terraform 格式／語法檢查；不自動部署。另附一張假設多人合作時的 Git 分支、PR、審查流程圖，不宣稱本專案真的由多人開發。
+- 已選加分：GitHub Actions 在提交時執行 Python 測試與 Terraform 格式／語法檢查；不自動部署。
 - 驗證：本機離線問答不需要 key；自動測試驗證文件處理、版本過濾和 API。若工具可用，Terraform 執行格式與語法檢查。Gemini 實際呼叫、雲端部署與 `terraform apply` 本次均不執行，必須標示為未驗證。
 
 ## 本次驗證與交接

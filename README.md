@@ -14,7 +14,6 @@
 | 問答與檢索程式 | [`app/rag.py`](app/rag.py)、[`app/indexer.py`](app/indexer.py) |
 | Terraform | [`infra/bootstrap`](infra/bootstrap)、[`infra/app`](infra/app) |
 | 需求規格與驗證紀錄 | [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md) |
-| 多人協作 Git 流程 | [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) |
 
 ## 主要功能
 
@@ -22,7 +21,7 @@
 - 文件依章節切段並建立可搜尋的文字向量；搜尋只使用目前生效的規定。
 - 支援同一頁面的追問、顯示引用來源與清除對話。重新整理頁面後不保留聊天紀錄。
 - 本機離線模式可直接測試；Gemini 模式只在使用者**明確設定**後才可能呼叫外部 API。
-- 提供 GCP 架構圖、Terraform 兩階段部署設定、CI 與多人 Git 協作流程說明。
+- 提供 GCP 架構圖、Terraform 兩階段部署設定與 CI 自動檢查。
 
 ## 五分鐘在本機啟動
 
@@ -106,7 +105,6 @@ GitHub Actions 在 push 與 Pull Request 時執行上述測試，以及 Terrafor
 ├── docs/
 │   ├── ARCHITECTURE.md   架構與服務選擇理由
 │   ├── DEPLOYMENT.md     部署步驟、權限與費用界線
-│   ├── GIT_WORKFLOW.md   假設多人協作的 Git 流程
 │   ├── PROJECT_PLAN.md   需求規格與驗證紀錄
 │   ├── diagrams/         架構圖（PNG、SVG、HTML、diagrams.net）與產生腳本
 │   └── images/           本機執行畫面
