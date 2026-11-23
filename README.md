@@ -11,6 +11,7 @@
 | 需求與設計依據 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) |
 | 雲端架構圖 | [架構與技術選擇](#架構與技術選擇)、[架構說明](docs/ARCHITECTURE.md) |
 | 部署步驟與權限設計 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| CI/CD 流程圖 | [docs/CICD.md](docs/CICD.md) |
 | 在本機執行 | [五分鐘在本機啟動](#五分鐘在本機啟動) |
 | 問答與檢索程式 | [`app/rag.py`](app/rag.py)、[`app/indexer.py`](app/indexer.py)、[`app/vertex.py`](app/vertex.py) |
 | Terraform | [`infra/bootstrap`](infra/bootstrap)、[`infra/app`](infra/app) |
@@ -72,7 +73,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 python -m pytest
 ```
 
-GitHub Actions 在 push 與 Pull Request 時執行上述測試，以及 Terraform 的 `fmt` 與 `validate` 靜態檢查；CI 不含任何部署步驟。
+GitHub Actions 在 push 與 Pull Request 時執行上述測試，以及 Terraform 的 `fmt` 與 `validate` 靜態檢查；CI 不含任何部署步驟。完整流程與自動部署的設計見 [CI/CD 流程](docs/CICD.md)。
 
 可以手動檢查：
 
@@ -96,6 +97,7 @@ GitHub Actions 在 push 與 Pull Request 時執行上述測試，以及 Terrafor
 │   ├── REQUIREMENTS.md   需求規格
 │   ├── ARCHITECTURE.md   架構與服務選擇理由
 │   ├── DEPLOYMENT.md     部署步驟與權限設計
+│   ├── CICD.md           CI/CD 流程圖
 │   ├── PROJECT_PLAN.md   開發過程與驗證紀錄
 │   ├── diagrams/         架構圖（PNG、互動 HTML）與 PNG 匯出腳本
 │   └── images/           本機執行畫面
