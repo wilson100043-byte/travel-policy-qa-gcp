@@ -4,35 +4,55 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
-    <meta name="description" content="以虛構差旅報帳文件展示檢索增強問答的本機示範系統。" />
-    <title>差旅規定問答｜RAG 示範</title>
+    <meta name="description" content="查詢差旅報帳規定，每個回答都附上依據的條文。" />
+    <title>差旅規定查詢</title>
     <link rel="stylesheet" href="/styles.css" />
     <script src="/app.js" defer></script>
   </head>
   <body>
-    <div class="page-shell">
-      <header class="topbar">
-        <div class="brand"><span class="brand-mark" aria-hidden="true">R</span><span><strong>差旅規定問答</strong><small>RAG 示範專案</small></span></div>
-        <div class="topbar-right"><span class="status-dot" aria-hidden="true"></span><span>本機示範</span><span class="topbar-divider"></span><span>虛構資料</span></div>
-      </header>
+    <header class="masthead">
+      <div class="masthead-inner">
+        <div class="masthead-title">
+          <h1>差旅規定查詢</h1>
+          <p>只引用目前生效的規定，每個回答都附上條文出處。</p>
+        </div>
+        <button id="clear-chat" class="ghost-button" type="button">清除對話</button>
+      </div>
+    </header>
 
-      <main class="workspace">
-        <aside class="sidebar" aria-label="使用說明">
-          <div class="sidebar-heading"><span class="eyebrow">INTERNAL KNOWLEDGE DEMO</span><h1>找到規定，<br /><em>看見依據。</em></h1><p>用自然語言查詢差旅報帳規定。系統會先找相關文件，再整理成容易閱讀的回答。</p></div>
-          <div class="side-card"><span class="side-card-icon" aria-hidden="true">01</span><div><strong>問一個具體問題</strong><p>例如住宿上限、申請期限或需要哪些憑證。</p></div></div>
-          <div class="side-card"><span class="side-card-icon" aria-hidden="true">02</span><div><strong>查看回答的來源</strong><p>每次回答下方會列出參考文件與章節，方便你自行核對。</p></div></div>
-          <div class="privacy-card"><strong>資料範圍</strong><p>文件均為自行編寫的假規定，不代表任何公司的真實制度。對話只留在此頁，重新整理後即清除。</p></div>
-          <div class="sidebar-footer">LOCAL FIRST <span>·</span> POLICY RAG DEMO</div>
-        </aside>
-
-        <section class="chat-panel" aria-labelledby="chat-heading">
-          <div class="chat-header"><div><span class="eyebrow">POLICY ASSISTANT</span><h2 id="chat-heading">差旅報帳小幫手</h2><p>回答會附上來源；找不到依據時會直接說明。</p></div><button id="clear-chat" class="clear-button" type="button" title="清除目前頁面的對話">清除對話</button></div>
-          <div id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions text">
-            <div id="welcome" class="welcome"><div class="welcome-icon" aria-hidden="true">✦</div><h3>想查哪一條差旅規定？</h3><p>可以直接提問，也可以先試試下面的例子。追問時，系統會參考這一頁最近三輪對話。</p><div class="suggestions"><button class="suggestion" type="button" data-question="現在出差住宿每晚最多可以報多少？">住宿每晚最多報多少？ <span aria-hidden="true">↗</span></button><button class="suggestion" type="button" data-question="出差結束後多久要送出報帳申請？">多久內要送出申請？ <span aria-hidden="true">↗</span></button><button class="suggestion" type="button" data-question="搭計程車需要附什麼資料？">計程車要附什麼？ <span aria-hidden="true">↗</span></button></div></div>
+    <main class="ledger">
+      <div id="messages" class="entries" role="log" aria-live="polite" aria-relevant="additions text">
+        <section id="welcome" class="welcome" aria-labelledby="welcome-heading">
+          <h2 id="welcome-heading">想確認哪一條規定？</h2>
+          <p>直接用一句話問，例如金額上限、送件期限或要附的單據。可以接著追問，系統會參考最近三輪對話。</p>
+          <div class="scope" aria-label="查詢範圍">
+            <span class="scope-label">查詢範圍</span>
+            <ul>
+              <li>差旅報帳基本規範</li>
+              <li>交通與餐費規定</li>
+              <li>住宿費規定（現行版）</li>
+            </ul>
           </div>
-          <div class="composer-wrap"><div id="error" class="error-banner" role="alert" hidden></div><form id="question-form" class="composer"><label class="sr-only" for="question">輸入差旅報帳問題</label><textarea id="question" name="question" rows="2" maxlength="1000" placeholder="輸入你的問題，例如：住宿費超過上限怎麼辦？" required></textarea><button id="send" class="send-button" type="submit" aria-label="送出問題"><span>送出</span><span aria-hidden="true">↗</span></button></form><p class="composer-note">僅供技術展示。請勿輸入真實公司文件、個人資料或機密資訊。</p></div>
+          <div class="examples">
+            <span class="scope-label">常見問題</span>
+            <button class="example" type="button" data-question="現在出差住宿每晚最多可以報多少？">住宿每晚最多可以報多少？</button>
+            <button class="example" type="button" data-question="出差結束後多久要送出報帳申請？">出差結束後多久要送出申請？</button>
+            <button class="example" type="button" data-question="搭計程車需要附什麼資料？">搭計程車要附什麼資料？</button>
+          </div>
         </section>
-      </main>
-    </div>
+      </div>
+    </main>
+
+    <footer class="composer-bar">
+      <div class="composer-inner">
+        <div id="error" class="error-banner" role="alert" hidden></div>
+        <form id="question-form" class="composer">
+          <label class="composer-mark" for="question">問</label>
+          <textarea id="question" name="question" rows="1" maxlength="1000" placeholder="輸入想確認的規定" required></textarea>
+          <button id="send" class="send-button" type="submit"><span>送出</span></button>
+        </form>
+        <p class="composer-note">示範資料：規定內容為虛構。對話只留在這個頁面，重新整理後就會清除。</p>
+      </div>
+    </footer>
   </body>
 </html>

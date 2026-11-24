@@ -12,6 +12,9 @@
   let busy = false;
   let requestController = null;
 
+  // Amounts and deadlines quoted from the policy, e.g. 新臺幣 2,500 元, 30 個曆日, NT$300.
+  const FIGURE = /(?:新臺幣\s*)?\d[\d,]*(?:\.\d+)?\s*(?:個曆日|個工作天|個工作日|元|天|日|%)|NT\$\s*\d[\d,]*/g;
+
   function el(tag, className, textValue) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -19,8 +22,21 @@
     return node;
   }
 
-  function scrollToLatest() {
-    messages.scrollTop = messages.scrollHeight;
+  // Build text with highlighted figures using text nodes only (no HTML parsing).
+  function withFigures(tag, className, textValue) {
+    const node = el(tag, className);
+    let last = 0;
+    for (const match of textValue.matchAll(FIGURE)) {
+      if (match.index > last) node.append(textValue.slice(last, match.index));
+      node.append(el("span", "figure", match[0]));
+      last = match.index + match[0].length;
+    }
+    if (last < textValue.length) node.append(textValue.slice(last));
+    return node;
+  }
+
+  function scrollToLatest(node) {
+    node.scrollIntoView({ block: "end", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
 
   function setError(message) {
@@ -33,44 +49,63 @@
     sendButton.disabled = value;
     questionInput.disabled = value;
     clearButton.disabled = value;
-    sendButton.querySelector("span:first-child").textContent = value ? "查詢中" : "送出";
+    sendButton.querySelector("span").textContent = value ? "查詢中" : "送出";
   }
 
-  function renderUser(textValue) {
-    const bubble = el("div", "message user", textValue);
-    messages.append(bubble);
-    scrollToLatest();
-    return bubble;
+  function row(kind, markText) {
+    const node = el("div", `row ${kind}`);
+    node.append(el("span", "mark", markText));
+    return node;
   }
 
-  function renderAnswer(answer, sources, mode) {
-    const wrapper = el("article", "message assistant");
-    wrapper.append(el("div", "assistant-avatar", "R"));
-    const content = el("div", "answer-content");
-    const heading = el("div", "answer-heading");
-    heading.append(el("span", "", "規定助理"));
-    if (mode === "offline" || mode === "local" || mode === "keyword") {
-      heading.append(el("span", "mode-badge", "本機查詢"));
-    }
-    content.append(heading, el("div", "answer-text", answer));
+  function renderQuestion(textValue) {
+    const entry = el("article", "entry");
+    const q = row("q", "問");
+    q.append(el("p", "q-text", textValue));
+    const a = row("a", "答");
+    const body = el("div", "a-body");
+    body.append(el("p", "pending", "正在查詢規定"));
+    a.append(body);
+    entry.append(q, a);
+    messages.append(entry);
+    scrollToLatest(entry);
+    return { entry, body };
+  }
+
+  function renderAnswer(body, answer, sources, mode) {
+    body.replaceChildren();
+    const meta = el("div", "a-meta");
+    meta.append(el("span", "mode-badge", mode === "vertex" ? "AI 整理" : "原文摘錄"));
+    body.append(meta, withFigures("p", "a-text", answer));
+
     if (Array.isArray(sources) && sources.length) {
-      const sourceList = el("div", "sources");
-      sourceList.append(el("div", "sources-title", `參考來源 · ${sources.length}`));
-      for (const source of sources) {
-        const item = el("div", "source");
-        const documentName = typeof source.document === "string" ? source.document : "未命名文件";
-        const sectionName = typeof source.section === "string" ? source.section : "";
-        item.append(el("strong", "", sectionName ? `${documentName} · ${sectionName}` : documentName));
+      const stubs = el("div", "stubs");
+      sources.forEach((source, index) => {
+        const stub = el("section", "stub");
+        const head = el("div", "stub-head");
+        head.append(el("span", "", `依據 ${index + 1} / ${sources.length}`));
+        stub.append(head);
+        stub.append(el("p", "stub-doc", typeof source.document === "string" ? source.document : "未命名文件"));
+        if (typeof source.section === "string" && source.section) stub.append(el("p", "stub-section", source.section));
         if (typeof source.excerpt === "string" && source.excerpt.trim()) {
-          item.append(el("p", "", source.excerpt));
+          stub.append(withFigures("p", "stub-excerpt", source.excerpt.trim() + "…"));
+          const toggle = el("button", "stub-toggle", "顯示全文");
+          toggle.type = "button";
+          toggle.setAttribute("aria-expanded", "false");
+          toggle.addEventListener("click", () => {
+            const expanded = stub.classList.toggle("expanded");
+            toggle.textContent = expanded ? "收合" : "顯示全文";
+            toggle.setAttribute("aria-expanded", String(expanded));
+          });
+          stub.append(toggle);
         }
-        sourceList.append(item);
-      }
-      content.append(sourceList);
+        const stamp = el("span", "stamp", "現行");
+        stamp.setAttribute("aria-label", "目前生效的規定");
+        stub.append(stamp);
+        stubs.append(stub);
+      });
+      body.append(stubs);
     }
-    wrapper.append(content);
-    messages.append(wrapper);
-    scrollToLatest();
   }
 
   function recentHistory() {
@@ -80,15 +115,17 @@
     ]);
   }
 
+  function resizeInput() {
+    questionInput.style.height = "auto";
+    questionInput.style.height = Math.min(questionInput.scrollHeight, 140) + "px";
+  }
+
   async function ask(rawQuestion) {
     const question = rawQuestion.trim();
     if (!question || busy) return;
     setError("");
     welcome.hidden = true;
-    const userBubble = renderUser(question);
-    const pending = el("div", "message assistant pending", "正在查詢文件並整理回答");
-    messages.append(pending);
-    scrollToLatest();
+    const { entry, body } = renderQuestion(question);
     setBusy(true);
     requestController = new AbortController();
     const timeoutId = setTimeout(() => requestController.abort(), 45000);
@@ -106,15 +143,15 @@
         throw new Error(detail);
       }
       if (!result || typeof result.answer !== "string") throw new Error("伺服器回傳格式不正確，請稍後重試。");
-      pending.remove();
-      renderAnswer(result.answer, result.sources, result.mode);
+      renderAnswer(body, result.answer, result.sources, result.mode);
       turns.push({ question, answer: result.answer });
       questionInput.value = "";
+      resizeInput();
+      scrollToLatest(entry);
     } catch (error) {
-      pending.remove();
-      userBubble.remove();
+      entry.remove();
       if (!turns.length) welcome.hidden = false;
-      setError(error.name === "AbortError" ? "查詢等候超過 45 秒，請稍後重試。" : error.message || "連線失敗，請確認本機服務已啟動。");
+      setError(error.name === "AbortError" ? "查詢超過 45 秒沒有回應，請稍後重試。" : error.message || "連線失敗，請確認服務已啟動。");
     } finally {
       clearTimeout(timeoutId);
       requestController = null;
@@ -127,6 +164,7 @@
     event.preventDefault();
     ask(questionInput.value);
   });
+  questionInput.addEventListener("input", resizeInput);
   questionInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
@@ -138,6 +176,7 @@
     messages.replaceChildren(welcome);
     welcome.hidden = false;
     questionInput.value = "";
+    resizeInput();
     setError("");
     questionInput.focus();
   });
