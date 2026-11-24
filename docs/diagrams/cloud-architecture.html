@@ -301,12 +301,12 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
       lines: ["Eventarc 收到上傳事件", "Workflows 確認 raw/*.md", "啟動索引 Job"] },
     { id: "job", x: 870, y: 320, w: 250, h: 200, icon: "cloud_run", title: "Cloud Run Job", role: "負責：把規定轉成索引", flows: "build index sec",
       lines: ["travel-policy-rag-index", "python -m app.indexer", "SA：travel-rag-indexer", "逾時 3600s · 重試 1 次", "1 vCPU · 1Gi"] },
-    { id: "proc", x: 1160, y: 330, w: 210, h: 150, icon: "cloud_storage", title: "Cloud Storage", role: "負責：存放可搜尋的索引", flows: "index ask",
-      lines: ["processed/index.json", "章節＋向量＋生效日", "與 raw/ 同一 bucket"] },
+    { id: "proc", x: 1160, y: 330, w: 210, h: 172, icon: "cloud_storage", title: "Cloud Storage", role: "負責：存放可搜尋的索引", flows: "index ask",
+      lines: ["processed/index.json", "章節＋向量＋生效日", "與 raw/ 同一 bucket", "無資料庫，索引為 JSON"] },
     { id: "iap", x: 590, y: 650, w: 230, h: 140, badge: "IAP", title: "IAP 登入閘道", role: "負責：確認是公司員工", flows: "ask sec",
       lines: ["公司 Google 帳號登入", "強制兩步驟驗證", "不需 Load Balancer"] },
     { id: "svc", x: 870, y: 630, w: 250, h: 240, icon: "cloud_run", title: "Cloud Run Service", role: "負責：網頁與問答 API", flows: "build ask sec",
-      lines: ["FastAPI 服務 travel-policy-rag", "/api/ask · /api/health · 網頁", "SA：travel-rag-api", "實例 1–5 · 每個併發 10", "逾時 60s · 1 vCPU · 1Gi", "與 Job 共用同一映像"] },
+      lines: ["FastAPI 服務 travel-policy-rag", "/api/ask · /api/health", "前端網頁也由這裡提供", "SA：travel-rag-api", "實例 1–5 · 每個併發 10", "逾時 60s · 1 vCPU · 1Gi", "與 Job 共用同一映像"] },
     { id: "vertex", x: 1416, y: 290, w: 248, h: 290, badge: "AI", title: "Vertex AI", role: "負責：理解問題、生成答案", flows: "index ask sec",
       lines: ["以服務帳號呼叫，無 API key", "生成：gemini-3.5-flash-lite", "　區域 us（美國多區域）", "向量：gemini-embedding-001", "　區域 us-central1", "768 維 · 單次逾時 15s", "temperature 0.1", "只用官方確認可用的組合"] },
     { id: "ops", x: 1416, y: 650, w: 248, h: 190, badge: "OPS", title: "監控與稽核", role: "負責：異常通知與存取紀錄", flows: "sec",
@@ -330,10 +330,10 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
     { d: "M820,405 H870", label: "執行", lx: 845, ly: 405, flow: "index", color: C.index },
     { d: "M1120,405 H1160", label: "寫入", lx: 1140, ly: 405, flow: "index", color: C.index },
     { d: "M1080,320 V300 H1416", label: "② Embedding（逐章節）", lx: 1250, ly: 300, flow: "index", color: C.index },
-    { d: "M1265,480 V750 H1120", label: "③ 讀取索引（快取）", lx: 1265, ly: 600, flow: "ask", color: C.ask },
-    { d: "M264,710 H590", label: "③ 開啟網址", lx: 430, ly: 710, flow: "ask", color: C.ask },
+    { d: "M1265,502 V750 H1120", label: "③ GCS client 讀 JSON（快取）", lx: 1265, ly: 600, flow: "ask", color: C.ask },
+    { d: "M264,710 H590", label: "③ HTTPS · POST /api/ask（JSON）", lx: 430, ly: 710, flow: "ask", color: C.ask },
     { d: "M820,720 H870", label: "驗證", lx: 845, ly: 720, flow: "ask", color: C.ask },
-    { d: "M1120,830 H1385 V560 H1416", label: "③ 改寫 → 向量 → 生成", lx: 1252, ly: 830, flow: "ask", color: C.ask }
+    { d: "M1120,830 H1385 V560 H1416", label: "③ REST/HTTPS：改寫→向量→生成", lx: 1252, ly: 830, flow: "ask", color: C.ask }
   ];
 
   function el(tag, attrs, parent) {
