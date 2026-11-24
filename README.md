@@ -73,7 +73,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 python -m pytest
 ```
 
-GitHub Actions 在 push 與 Pull Request 時執行上述測試，以及 Terraform 的 `fmt` 與 `validate` 靜態檢查；CI 不含任何部署步驟。完整流程與自動部署的設計見 [CI/CD 流程](docs/CICD.md)。
+GitHub Actions 在 push 與 Pull Request 時執行上述測試，以及 Terraform 的 `fmt` 與 `validate` 靜態檢查；CI 不含任何部署步驟。完整流程見 [CI/CD 流程](docs/CICD.md)。
 
 可以手動檢查：
 
