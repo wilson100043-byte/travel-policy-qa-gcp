@@ -3,7 +3,7 @@
 import math
 import re
 from datetime import date
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from app.config import Settings, require_vertex
 from app.vertex import VertexClient
@@ -12,17 +12,35 @@ from app.indexer import grams, load_index, vectorize_query
 
 NO_ANSWER = "目前生效的報帳規定中，找不到足以回答這個問題的內容。"
 OLD_POLICY = "這個示範只提供目前生效的規定，無法回答舊版規定。"
-OLD_WORDS = re.compile(r"舊版|舊規|舊制|以前|過去|歷史|去年|當時|2025")
+# Everyday words such as 以前 or 過去 only signal an old policy when they
+# describe the rule itself ("以前的上限"), not a trip ("出差以前").
+OLD_WORDS = re.compile(
+    r"舊版|舊規|舊制|去年|2025|(?:以前|過去|之前|當時|歷史)的?[\u4e00-\u9fff]{0,3}?(?:規定|版本|上限|標準|金額|額度|制度)"
+)
 OLD_LODGING_DATE = re.compile(r"2026\s*年\s*[1-6]\s*月|2026[-/]0?[1-6][-/]")
+PRIOR_INTENT = re.compile(r"上限|額度|多少|最多|幾天|多久|期限|要附什麼|附什麼|憑證|發票|收據")
 FOLLOW_UP = re.compile(r"^(那|這|它|同樣|還有|如果|需要|要附|發票|收據|上限)")
 
 
-def _local_rewrite(question: str, history: list) -> str:
-    """Carry one recent topic into a brief follow-up; the browser owns history."""
+def _local_rewrite(question: str, history: list, index: dict) -> Tuple[str, str]:
+    """Split a brief follow-up into (what to look for, which topic); the browser owns history.
+
+    The earlier topic (住宿, 計程車) only steers which document or section wins;
+    it is kept out of the body-text match so 「要附什麼？」 after a cap question
+    finds the receipt rules instead of the earlier answer again.
+    """
     prior = next((turn["content"] for turn in reversed(history[-6:]) if turn["role"] == "user"), "")
-    if prior and (FOLLOW_UP.search(question) or len(question) <= 7):
-        return prior + "；" + question
-    return question
+    if not prior or not (FOLLOW_UP.search(question) or len(question) <= 7):
+        return question, ""
+    title_terms = {
+        term for chunk in index["chunks"] for term in grams(chunk["document"] + chunk["section"])
+    }
+    prior_terms = grams(_focus(PRIOR_INTENT.sub(" ", prior)))
+    topic = " ".join(term for term in prior_terms if len(term) == 2 and term in title_terms)
+    # Keep the earlier intent (上限) only when the follow-up has none, e.g. 「那餐費呢？」.
+    if not PRIOR_INTENT.search(question):
+        question = " ".join(PRIOR_INTENT.findall(prior)) + " " + question
+    return question, topic
 
 
 def _vertex_rewrite(question: str, history: list, client: VertexClient) -> str:
@@ -49,7 +67,7 @@ def _cosine(left, right) -> float:
 
 
 def _focus(text: str) -> str:
-    for phrase in ("我想知道", "請問", "有沒有", "可不可以", "能不能", "是否", "現在", "可以報", "可以", "最多", "怎麼", "如何", "多少", "哪些", "請", "規定", "嗎", "呢"):
+    for phrase in ("我想知道", "請問", "有沒有", "可不可以", "能不能", "是否", "現在", "目前", "可以報", "可以", "最多", "怎麼", "如何", "是多少", "多少", "哪些", "請", "規定", "嗎", "呢"):
         text = text.replace(phrase, "")
     return text
 
@@ -74,7 +92,7 @@ def _topic_overlap(question: str, chunk: dict) -> int:
     return len(question_terms & source_terms)
 
 
-def _title_intent_bonus(question: str, chunk: dict) -> float:
+def _title_intent_bonus(question: str, chunk: dict, topic: str = "") -> float:
     title = chunk["section"]
     bonus = 0.0
     if re.search(r"多少|最多|上限|額度", question) and "上限" in title:
@@ -86,17 +104,22 @@ def _title_intent_bonus(question: str, chunk: dict) -> float:
     for term in ("計程車", "高鐵", "火車"):
         if term in question and term in title:
             bonus += 0.04
-    if "住宿" in question and "住宿" in chunk["document"]:
-        bonus += 0.025
-    elif "餐費" in question and "餐費" in chunk["document"]:
-        bonus += 0.025
+    # A topic the user names (住宿, 計程車...) should outweigh a body text that
+    # merely shares a phrase like 「費上限」, so reward query terms in the titles.
+    title_terms = set(grams(chunk["document"] + chunk["section"]))
+    bonus += min(len(set(grams(_focus(question))) & title_terms), 5) * 0.015
+    # The topic carried from an earlier turn picks the document or section.
+    if topic and set(topic.split()) & title_terms:
+        bonus += 0.06
     return bonus
 
 
-def search(question: str, index: dict, today: date, client: Optional[VertexClient] = None) -> List[dict]:
+def search(question: str, index: dict, today: date, client: Optional[VertexClient] = None,
+           topic: str = "") -> List[dict]:
     retrieval_question = _expand_question(question)
     if index["mode"] == "local":
-        query_vector = vectorize_query(retrieval_question, index)
+        # Question filler (「是多少」) would otherwise match unrelated body text.
+        query_vector = vectorize_query(_focus(retrieval_question), index)
     else:
         if client is None:
             raise ValueError("Vertex client missing")
@@ -108,12 +131,12 @@ def search(question: str, index: dict, today: date, client: Optional[VertexClien
         if start > today or (end and end < today):
             continue
         score = _cosine(query_vector, chunk["vector"])
-        overlap = _topic_overlap(retrieval_question, chunk)
+        overlap = _topic_overlap(retrieval_question + " " + topic, chunk)
         if index["mode"] == "local" and (score < 0.012 or overlap < 2):
             continue
         # Similarity alone can favor a long paragraph full of generic terms.
         # Give a small boost to sections covering several distinct query grams.
-        rank_score = score + min(overlap, 8) * 0.008 + _title_intent_bonus(question, chunk) if index["mode"] == "local" else score
+        rank_score = score + min(overlap, 8) * 0.008 + _title_intent_bonus(question, chunk, topic) if index["mode"] == "local" else score
         candidates.append((rank_score, overlap, chunk))
     candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
     if index["mode"] == "vertex":
@@ -189,8 +212,8 @@ def ask(question: str, history: list, settings: Settings, today: Optional[date] 
         client = VertexClient(settings)
         query = _vertex_rewrite(question, history, client)
     else:
-        query = _local_rewrite(question, history)
-    matches = search(query, index, today, client)
+        query, topic = _local_rewrite(question, history, index)
+    matches = search(query, index, today, client, topic)
     if not matches:
         return {"answer": NO_ANSWER, "sources": [], "mode": settings.ai_mode}
     if settings.ai_mode == "vertex":

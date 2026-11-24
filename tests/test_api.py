@@ -81,6 +81,47 @@ def test_unknown_and_old_policy_do_not_quote_stale_amount(monkeypatch, tmp_path)
     assert "300" in current_meal["answer"]
 
 
+def test_readme_manual_checks(monkeypatch, tmp_path):
+    """The exact questions README.md tells reviewers to try."""
+    monkeypatch.setenv("AI_MODE", "local")
+    monkeypatch.setenv("STORAGE_MODE", "local")
+    monkeypatch.setenv("INDEX_PATH", str(tmp_path / "index.json"))
+    question = "目前住宿費上限是多少？"
+    first = client.post("/api/ask", json={"question": question, "history": []}).json()
+    assert "2,500" in first["answer"]
+    assert "2,000" not in first["answer"]
+    assert first["sources"][0]["section"].startswith("二、住宿上限")
+    assert "現行" in first["sources"][0]["document"]
+
+    follow = client.post("/api/ask", json={
+        "question": "要附什麼？",
+        "history": [
+            {"role": "user", "content": question},
+            {"role": "assistant", "content": first["answer"]},
+        ],
+    }).json()
+    assert follow["sources"][0]["section"] == "四、發票及入住證明"
+    assert "住宿業者開立的發票或正式收據" in follow["answer"]
+
+    unknown = client.post("/api/ask", json={"question": "有沒有健身房補助？", "history": []}).json()
+    assert unknown["sources"] == []
+    assert "找不到" in unknown["answer"]
+
+
+def test_everyday_time_words_are_not_old_policy_questions(monkeypatch, tmp_path):
+    monkeypatch.setenv("AI_MODE", "local")
+    monkeypatch.setenv("STORAGE_MODE", "local")
+    monkeypatch.setenv("INDEX_PATH", str(tmp_path / "index.json"))
+    taxi = client.post("/api/ask", json={"question": "過去三天的計程車可以一起報嗎", "history": []}).json()
+    assert "舊版" not in taxi["answer"]
+    assert "計程車" in taxi["sources"][0]["section"]
+    before = client.post("/api/ask", json={"question": "出差以前要先做什麼？", "history": []}).json()
+    assert "舊版" not in before["answer"]
+    old = client.post("/api/ask", json={"question": "以前的住宿上限是多少？", "history": []}).json()
+    assert old["sources"] == []
+    assert "舊版" in old["answer"]
+
+
 def test_local_mode_never_calls_vertex_even_with_project(monkeypatch, tmp_path):
     monkeypatch.setenv("AI_MODE", "local")
     monkeypatch.setenv("STORAGE_MODE", "local")
