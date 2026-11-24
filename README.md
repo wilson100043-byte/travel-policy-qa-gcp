@@ -17,6 +17,7 @@
 | 問答與檢索程式 | [`app/rag.py`](app/rag.py)、[`app/indexer.py`](app/indexer.py)、[`app/vertex.py`](app/vertex.py) |
 | Terraform | [`infra/bootstrap`](infra/bootstrap)、[`infra/app`](infra/app) |
 | 開發過程與驗證紀錄 | [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md) |
+| AI 輔助開發方式與心得 | [docs/AI_DEVELOPMENT.md](docs/AI_DEVELOPMENT.md) |
 
 ## 主要功能
 
@@ -101,6 +102,7 @@ GitHub Actions 在 push 與 Pull Request 時執行上述測試，以及 Terrafor
 │   ├── CICD.md           CI/CD 流程圖
 │   ├── GIT_WORKFLOW.md   多人協作 Git 流程
 │   ├── PROJECT_PLAN.md   開發過程與驗證紀錄
+│   ├── AI_DEVELOPMENT.md AI 輔助開發方式與心得
 │   ├── diagrams/         架構圖（PNG、互動 HTML）與 PNG 匯出腳本
 │   └── images/           本機執行畫面
 ├── .github/workflows/    CI：pytest 與 Terraform 靜態檢查
