@@ -186,7 +186,7 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
       <h2><i style="background:var(--index)"></i>② 自動建立索引</h2>
       <ol>
         <li>管理部門把規定上傳到 <code>raw/</code>，bucket 保留舊版本，改錯可以還原。</li>
-        <li>Eventarc 收到上傳事件，啟動 Workflows。Eventarc 無法直接啟動 Job，也不能依路徑過濾，所以由 Workflows 確認檔案是 <code>raw/*.md</code>。</li>
+        <li>Eventarc 收到上傳或刪除事件，啟動 Workflows。Eventarc 無法直接啟動 Job，也不能依路徑過濾，所以由 Workflows 確認檔案是 <code>raw/*.md</code>。</li>
         <li>Workflows 啟動 Cloud Run Job：解析標題與生效期間，依 <code>##</code> 切章節。</li>
         <li>每個章節呼叫 Vertex AI <code>gemini-embedding-001</code> 產生 768 維向量。</li>
         <li>整份結果寫成 <code>processed/index.json</code>。Job 寫入 <code>processed/</code> 也會產生事件，但 Workflows 會忽略，不會無限循環。</li>
@@ -238,7 +238,7 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
         <tr><td>檢索</td><td>TF-IDF</td><td>Vertex AI Embedding</td></tr>
         <tr><td>回答</td><td>抽取原文句子</td><td>Vertex AI 生成</td></tr>
         <tr><td>文件與索引</td><td><code>policy_docs/</code>、本機 JSON</td><td>Cloud Storage</td></tr>
-        <tr><td>重建索引</td><td>文件變更時自動</td><td>上傳後自動觸發 Job</td></tr>
+        <tr><td>重建索引</td><td>文件變更時自動</td><td>上傳或刪除後自動觸發 Job</td></tr>
       </table>
       <div class="src">來源：app/config.py、infra/app/main.tf</div>
     </section>
@@ -253,9 +253,8 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
       <p style="margin:0;font-size:14.5px">官方文件沒有列出台灣提供所需的 Gemini 模型，所以只採用官方明確確認可用的組合：生成用 <code>gemini-3.5-flash-lite</code>（<code>us</code> 多區域），Embedding 用 <code>gemini-embedding-001</code>（<code>us-central1</code>）。文件、索引與執行環境仍留在台灣；官方日後列出台灣或鄰近區域時，只要調整兩個 Terraform 變數。</p>
       <h3><span class="tag warn">其他限制</span></h3>
       <ul>
-        <li>短時間上傳多個檔案時，每個檔案都會啟動一次 Job；結果一致，但會重複執行。</li>
+        <li>短時間上傳多個檔案時，每個檔案都會啟動一次 Job，會重複執行；只由讀到最新文件的那次寫入索引。</li>
         <li>Cloud Monitoring 沒有第 90 百分位，回應告警用第 95 百分位、8 秒，比需求略嚴格。</li>
-        <li>Terraform state 目前在本機；正式環境應改放 GCS backend，才有共享與鎖定。</li>
         <li>IAM、Eventarc 與告警只通過靜態檢查，實際行為要部署後驗證。</li>
       </ul>
     </section>
@@ -284,7 +283,7 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
 
   const nodes = [
     { id: "dev", x: 36, y: 120, w: 228, h: 125, badge: "CLI", title: "開發者電腦", role: "負責：開發與手動部署", flows: "build",
-      lines: ["Terraform · gcloud CLI", "terraform apply 建立資源", "state 存於本機"] },
+      lines: ["Terraform · gcloud CLI", "terraform apply 建立資源", "state 存於 GCS backend"] },
     { id: "gh", x: 36, y: 285, w: 228, h: 125, badge: "GH", title: "GitHub + CI", role: "負責：版本控管與自動檢查", flows: "build",
       lines: ["push / PR：pytest", "Terraform 格式與語法檢查", "不含部署步驟"] },
     { id: "admin", x: 36, y: 430, w: 228, h: 110, badge: "ADM", title: "管理部門", role: "負責：維護規定內容", flows: "index sec",
@@ -297,8 +296,8 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
       lines: ["repo：travel-policy-rag", "immutable tags，不可覆寫"] },
     { id: "raw", x: 340, y: 330, w: 200, h: 150, icon: "cloud_storage", title: "Cloud Storage", role: "負責：存放原始規定", flows: "index sec",
       lines: ["raw/ 規定文件", "開啟版本保留", "改錯可以還原"] },
-    { id: "evwf", x: 590, y: 330, w: 230, h: 150, badge: "EV", title: "自動觸發", role: "負責：上傳後自動建索引", flows: "index",
-      lines: ["Eventarc 收到上傳事件", "Workflows 確認 raw/*.md", "啟動索引 Job"] },
+    { id: "evwf", x: 590, y: 330, w: 230, h: 150, badge: "EV", title: "自動觸發", role: "負責：文件變更後自動建索引", flows: "index",
+      lines: ["Eventarc 收到上傳/刪除事件", "Workflows 確認 raw/*.md", "啟動索引 Job"] },
     { id: "job", x: 870, y: 320, w: 250, h: 200, icon: "cloud_run", title: "Cloud Run Job", role: "負責：把規定轉成索引", flows: "build index sec",
       lines: ["travel-policy-rag-index", "python -m app.indexer", "SA：travel-rag-indexer", "逾時 3600s · 重試 1 次", "1 vCPU · 1Gi"] },
     { id: "proc", x: 1160, y: 330, w: 210, h: 172, icon: "cloud_storage", title: "Cloud Storage", role: "負責：存放可搜尋的索引", flows: "index ask",
@@ -313,7 +312,7 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
       lines: ["Cloud Monitoring 告警：", "回應 > 8s、5xx 錯誤、", "索引失敗 → 寄信通知", "Cloud Logging：", "記錄 IAP 存取", "不記錄提問內容"] },
     { id: "iam", x: 336, y: 956, w: 1328, h: 96, flows: "sec", columns: [
       ["員工群組 → IAP 存取角色", "IAP 服務代理 → run.invoker", "管理部門 → 只能寫 raw/"],
-      ["travel-rag-api → 讀 bucket、Vertex AI", "travel-rag-indexer → 只能寫 processed/", "travel-rag-reindex → 只能執行這個 Job"],
+      ["travel-rag-api → 讀 bucket、Vertex AI", "travel-rag-indexer → 只能寫 processed/", "travel-rag-reindex → 執行這個 Job、讀 raw/"],
       ["Cloud Build → 只能寫這個映像庫", "維運人員 → 手動執行 Job", "沒有 allUsers 公開授權、沒有 API key"]
     ] }
   ];
@@ -427,7 +426,7 @@ footer{margin-top:22px;font-size:13px;color:var(--muted)}
       { t: "管理部門上傳規定", e: [[4]], n: ["admin", "raw"],
         d: "管理部門將規定文件上傳至 Cloud Storage 的 raw/。權限只允許寫入 raw/；bucket 保留舊版本，規定改錯可以還原。" },
       { t: "上傳事件觸發自動化", e: [[5]], n: ["raw", "evwf"],
-        d: "Eventarc 收到上傳事件後啟動 Workflows。Eventarc 無法直接啟動 Cloud Run Job，也不能依路徑過濾，所以由 Workflows 確認檔案位於 raw/ 且為 .md。" },
+        d: "Eventarc 收到上傳或刪除事件後啟動 Workflows。Eventarc 無法直接啟動 Cloud Run Job，也不能依路徑過濾，所以由 Workflows 確認檔案位於 raw/ 且為 .md。" },
       { t: "啟動索引 Job", e: [[6]], n: ["evwf", "job"],
         d: "Workflows 以專用服務帳號啟動 Cloud Run Job，這個帳號只能執行這一個 Job。Job 讀取所有規定，依 ## 標題切分章節並記錄生效期間。" },
       { t: "產生章節向量", e: [[8], [8, true]], n: ["job", "vertex"],

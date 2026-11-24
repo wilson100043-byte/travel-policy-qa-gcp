@@ -15,7 +15,7 @@
 | `infra/bootstrap` | 啟用必要 API；建立私人 Cloud Storage bucket（開啟版本保留）；建立 Artifact Registry Docker repository。 | bucket 是空的，尚未有規定文件與索引。 |
 | 手動準備 | Cloud Build 建置映像並推送到 Artifact Registry。 | 映像就緒。 |
 | `infra/app` `main.tf` | 服務帳號與權限、啟用 IAP 的 Cloud Run Service、Cloud Run Job、管理部門的上傳權限。 | 服務上線，但還沒有索引。 |
-| `infra/app` `reindex.tf` | Eventarc 觸發器與 Workflows：`raw/` 有新的 `.md` 檔時自動執行 Job。 | 上傳規定後自動產生索引。 |
+| `infra/app` `reindex.tf` | Eventarc 觸發器（上傳、刪除各一個）與 Workflows：`raw/` 的 `.md` 檔新增、更新或刪除時自動執行 Job。 | 上傳或刪除規定後自動重建索引。 |
 | `infra/app` `monitoring.tf` | 回應過慢、伺服器錯誤、索引失敗三個告警，以及 IAP 存取稽核記錄。 | 異常時寄信通知系統管理者。 |
 
 ## 不連接雲端的檢查
@@ -34,10 +34,21 @@ terraform -chdir=infra/app validate -no-color
 
 > 以下指令會建立雲端資源並產生費用，本專案沒有執行。
 
+0. 建立存放 Terraform state 的 bucket。state 不放在個人電腦，多人維護時共用同一份，並在 `apply` 期間自動鎖定；開啟版本保留，state 損壞時可還原。這個 bucket 由維運人員事先建立，不由 Terraform 管理，避免「用 Terraform 建立自己的 state 位置」的循環。
+
+   ```sh
+   gcloud storage buckets create gs://YOUR_TF_STATE_BUCKET --project=YOUR_GCP_PROJECT_ID \
+     --location=asia-east1 --uniform-bucket-level-access --public-access-prevention
+   gcloud storage buckets update gs://YOUR_TF_STATE_BUCKET --versioning
+   ```
+
+   只有維運人員能存取這個 bucket；state 可能含有資源設定細節，不應給一般員工或管理部門。
+
 1. 複製 `infra/bootstrap/terraform.tfvars.example` 為 `terraform.tfvars`，填入專案 ID 與全球唯一的 bucket 名稱，然後套用：
 
    ```sh
-   terraform -chdir=infra/bootstrap init
+   terraform -chdir=infra/bootstrap init \
+     -backend-config=bucket=YOUR_TF_STATE_BUCKET -backend-config=prefix=travel-policy-rag/bootstrap
    terraform -chdir=infra/bootstrap apply
    ```
 
@@ -57,11 +68,12 @@ terraform -chdir=infra/app validate -no-color
 4. 複製 `infra/app/terraform.tfvars.example` 為 `terraform.tfvars`，填入映像路徑、員工群組（`authorized_users`）、管理部門群組（`policy_admins`）、維運人員（`authorized_job_executors`）與告警信箱（`alert_email`），然後套用：
 
    ```sh
-   terraform -chdir=infra/app init
+   terraform -chdir=infra/app init \
+     -backend-config=bucket=YOUR_TF_STATE_BUCKET -backend-config=prefix=travel-policy-rag/app
    terraform -chdir=infra/app apply
    ```
 
-5. 管理部門上傳規定文件到 `raw/`。上傳完成後，Eventarc 會啟動 Workflows，再由 Workflows 執行索引 Job：
+5. 管理部門上傳規定文件到 `raw/`。上傳完成後，Eventarc 會啟動 Workflows，再由 Workflows 執行索引 Job；之後刪除 `raw/` 的規定也會自動重建索引：
 
    ```sh
    gcloud storage cp policy_docs/*.md gs://YOUR_BUCKET/raw/
@@ -84,7 +96,7 @@ gcloud run jobs execute travel-policy-rag-index --region=asia-east1 --project=YO
 | 管理部門群組 | bucket `objectViewer`；`objectAdmin`，條件限定 `raw/` | 瀏覽並上傳、更新規定文件。 |
 | `travel-rag-api` | bucket `objectViewer`；專案 `roles/aiplatform.user` | Service 讀取索引、呼叫 Vertex AI。 |
 | `travel-rag-indexer` | bucket `objectViewer`；`objectAdmin`，條件限定 `processed/`；專案 `roles/aiplatform.user` | Job 讀取規定、寫入索引、呼叫 Embedding。 |
-| `travel-rag-reindex` | `eventarc.eventReceiver`、`workflows.invoker`、`logging.logWriter`；Job 的 `run.jobsExecutor` | 接收上傳事件，只能啟動這一個 Job。 |
+| `travel-rag-reindex` | `eventarc.eventReceiver`、`workflows.invoker`、`logging.logWriter`；Job 的 `run.jobsExecutor`；bucket `objectViewer`，條件限定 `raw/` | 接收上傳與刪除事件，只能啟動這一個 Job；讀取 `raw/` 的物件資訊，分辨規定是被刪除還是被新版取代。 |
 | Cloud Storage 服務代理 | `roles/pubsub.publisher` | 將上傳事件送給 Eventarc。 |
 | 維運人員 | Job 的 `run.jobsExecutor` | 必要時手動重建索引。 |
 
@@ -100,7 +112,9 @@ gcloud run jobs execute travel-policy-rag-index --region=asia-east1 --project=YO
 
 ## 已知限制
 
-- 自動重建索引：短時間內上傳多個檔案時，每個檔案都會啟動一次 Job。Job 每次都重建完整索引，結果一致，但會重複執行。
+- 自動重建索引：短時間內上傳多個檔案時，每個檔案都會啟動一次 Job，會重複執行並產生額外的 Vertex AI 費用。Job 寫入前會再檢查 `raw/`，若期間文件有變動就不寫入，所以較早開始、較晚結束的執行不會用舊文件覆蓋新索引；最後寫入的是讀到最新文件的那次。
+- 刪除偵測依賴 bucket 的版本保留：刪除規定時 Cloud Storage 送出的是 `archived` 事件。若關閉版本保留，需改為監聽 `deleted` 事件。
+- 某次重建若重試後仍失敗（例如 Vertex AI 長時間限流），索引維持上一版，並觸發「索引失敗」告警。
 - 告警門檻：Cloud Monitoring 沒有第 90 百分位的對齊器，回應時間告警使用第 95 百分位、門檻 8 秒，比需求略嚴格。
 - 以上設定都只通過 Terraform 靜態檢查，IAM、Eventarc 與告警的實際行為尚未在 GCP 上驗證。
 

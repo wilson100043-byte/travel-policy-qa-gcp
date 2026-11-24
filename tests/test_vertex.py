@@ -86,3 +86,53 @@ def test_regional_location_uses_regional_host():
     settings = replace(load_settings(), ai_mode="vertex", gcp_project="demo-project")
     url = VertexClient(settings)._url("gemini-3.5-flash", "generateContent", "asia-northeast1")
     assert url.startswith("https://asia-northeast1-aiplatform.googleapis.com/v1/projects/demo-project/locations/asia-northeast1/")
+
+
+def test_indexer_client_retries_rate_limit_then_succeeds(monkeypatch):
+    settings = replace(load_settings(), ai_mode="vertex", gcp_project="demo-project")
+    waits = []
+    instance = VertexClient(settings, max_attempts=3, sleep=waits.append)
+    monkeypatch.setattr(instance, "_token", lambda: "test-token")
+    replies = iter([429, 503, None])
+
+    def _open(request, timeout):
+        code = next(replies)
+        if code:
+            raise HTTPError(request.full_url, code, "busy", {}, None)
+        return io.BytesIO(json.dumps({"predictions": [{"embeddings": {"values": [1.0]}}]}).encode("utf-8"))
+    monkeypatch.setattr(vertex, "urlopen", _open)
+
+    assert instance.embed("住宿", "RETRIEVAL_DOCUMENT") == [1.0]
+    assert len(waits) == 2 and waits[1] > waits[0]  # Backoff grows between attempts.
+
+
+def test_retries_stop_after_max_attempts(monkeypatch):
+    settings = replace(load_settings(), ai_mode="vertex", gcp_project="demo-project")
+    calls = []
+    instance = VertexClient(settings, max_attempts=3, sleep=lambda seconds: None)
+    monkeypatch.setattr(instance, "_token", lambda: "test-token")
+
+    def _open(request, timeout):
+        calls.append(1)
+        raise HTTPError(request.full_url, 429, "Too Many Requests", {}, None)
+    monkeypatch.setattr(vertex, "urlopen", _open)
+
+    with pytest.raises(VertexUnavailable, match="請求過多"):
+        instance.generate("問題")
+    assert len(calls) == 3
+
+
+def test_client_error_is_not_retried(monkeypatch):
+    settings = replace(load_settings(), ai_mode="vertex", gcp_project="demo-project")
+    calls = []
+    instance = VertexClient(settings, max_attempts=3, sleep=lambda seconds: None)
+    monkeypatch.setattr(instance, "_token", lambda: "test-token")
+
+    def _open(request, timeout):
+        calls.append(1)
+        raise HTTPError(request.full_url, 400, "Bad Request", {}, None)
+    monkeypatch.setattr(vertex, "urlopen", _open)
+
+    with pytest.raises(VertexUnavailable):
+        instance.generate("問題")
+    assert len(calls) == 1

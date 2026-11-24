@@ -1,15 +1,50 @@
-# Started by Eventarc for every object finalized in the bucket. Eventarc cannot
-# filter by name prefix, so the workflow ignores everything outside raw/*.md,
-# including the index the Job itself writes to processed/ (no trigger loop).
+# Started by Eventarc for every object finalized or archived in the bucket.
+# Eventarc cannot filter by name prefix, so the workflow ignores everything
+# outside raw/*.md, including the index the Job itself writes to processed/
+# (no trigger loop).
+#
+# The bucket keeps object versions, so deleting a policy archives it instead of
+# sending a "deleted" event. Replacing a policy also archives the previous
+# version; in that case the new version is still live and its own "finalized"
+# event already starts the Job, so the archived event is ignored.
 main:
   params: [event]
   steps:
     - init:
         assign:
           - object_name: $${event.data.name}
+          - is_archived: $${event.type == "google.cloud.storage.object.v1.archived"}
+          - removed: false
     - check_policy_file:
         switch:
-          - condition: $${text.match_regex(object_name, "^raw/.+\\.md$")}
+          - condition: $${not text.match_regex(object_name, "^raw/.+\\.md$")}
+            next: ignore
+          - condition: $${is_archived}
+            next: check_still_live
+        next: run_index_job
+    - check_still_live:
+        try:
+          steps:
+            # A live version still exists: the policy was replaced, not removed.
+            - get_live_object:
+                call: googleapis.storage.v1.objects.get
+                args:
+                  bucket: "${bucket_name}"
+                  object: $${text.url_encode(object_name)}
+        except:
+          as: error
+          steps:
+            - removed_or_failed:
+                switch:
+                  # No live version left: the policy was removed, so rebuild.
+                  - condition: $${"code" in error and error.code == 404}
+                    assign:
+                      - removed: true
+                  - condition: true
+                    raise: $${error}
+    - rebuild_if_removed:
+        switch:
+          - condition: $${removed}
             next: run_index_job
         next: ignore
     - run_index_job:

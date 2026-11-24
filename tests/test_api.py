@@ -139,3 +139,17 @@ def test_local_mode_never_calls_vertex_even_with_project(monkeypatch, tmp_path):
 
 def test_empty_question_is_rejected():
     assert client.post("/api/ask", json={"question": "", "history": []}).status_code == 422
+
+
+def test_effective_date_uses_taiwan_time(monkeypatch):
+    from datetime import datetime, timezone
+
+    from app import rag
+
+    class FixedClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            # 2026-06-30 17:00 UTC is already 2026-07-01 01:00 in Taiwan.
+            return datetime(2026, 6, 30, 17, 0, tzinfo=timezone.utc).astimezone(tz)
+    monkeypatch.setattr(rag, "datetime", FixedClock)
+    assert str(rag.taiwan_today()) == "2026-07-01"

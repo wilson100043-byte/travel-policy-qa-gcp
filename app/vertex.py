@@ -5,6 +5,8 @@ Credentials, so the service never handles a long-lived API key.
 """
 
 import json
+import random
+import time
 from typing import List
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -16,6 +18,11 @@ from app.config import Settings, require_vertex
 # 3 x 15s stays under the Cloud Run service request timeout of 60s in infra/app.
 VERTEX_TIMEOUT_SECONDS = 15
 EMBEDDING_DIMENSIONS = 768
+# Errors worth retrying: rate limits and temporary server failures.
+RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+# The index Job embeds every section in turn, so one rate-limited call must not
+# fail the whole rebuild. 1+2+4+8+16 s of backoff stays well inside its timeout.
+INDEXER_MAX_ATTEMPTS = 6
 _SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 
 
@@ -23,10 +30,23 @@ class VertexUnavailable(RuntimeError):
     """A safe, user-facing description of a Vertex AI request failure."""
 
 
+class _Retryable(Exception):
+    """Wraps the VertexUnavailable to raise if no retry succeeds."""
+
+    def __init__(self, unavailable: VertexUnavailable):
+        super().__init__(str(unavailable))
+        self.unavailable = unavailable
+
+
 class VertexClient:
-    def __init__(self, settings: Settings):
+    """max_attempts=1 for the web API, whose request budget fits one try per call;
+    the index Job passes INDEXER_MAX_ATTEMPTS and waits out rate limits."""
+
+    def __init__(self, settings: Settings, max_attempts: int = 1, sleep=time.sleep):
         require_vertex(settings)
         self.settings = settings
+        self.max_attempts = max(1, max_attempts)
+        self._sleep = sleep
         self._credentials = None
 
     def _token(self) -> str:
@@ -53,6 +73,17 @@ class VertexClient:
         )
 
     def _post(self, model: str, method: str, location: str, payload: dict) -> dict:
+        for attempt in range(1, self.max_attempts + 1):
+            try:
+                return self._post_once(model, method, location, payload)
+            except _Retryable as error:
+                if attempt == self.max_attempts:
+                    raise error.unavailable from None
+                # Exponential backoff with jitter so parallel callers spread out.
+                self._sleep(2 ** (attempt - 1) + random.uniform(0, 1))
+        raise AssertionError("unreachable")
+
+    def _post_once(self, model: str, method: str, location: str, payload: dict) -> dict:
         try:
             token = self._token()
         except Exception:
@@ -69,9 +100,13 @@ class VertexClient:
                 return json.load(response)
         except HTTPError as error:
             if error.code == 429:
-                raise VertexUnavailable("AI 服務目前請求過多，請稍後再試。") from None
+                raise _Retryable(VertexUnavailable("AI 服務目前請求過多，請稍後再試。")) from None
+            if error.code in RETRYABLE_STATUS:
+                raise _Retryable(VertexUnavailable("AI 服務暫時無法使用，請稍後再試。")) from None
             raise VertexUnavailable("AI 服務暫時無法使用，請稍後再試。") from None
-        except (URLError, TimeoutError, OSError, ValueError):
+        except (URLError, TimeoutError, OSError):
+            raise _Retryable(VertexUnavailable("無法連接 AI 服務，請稍後再試。")) from None
+        except ValueError:
             raise VertexUnavailable("無法連接 AI 服務，請稍後再試。") from None
 
     def embed(self, text: str, task_type: str, title: str = "") -> List[float]:

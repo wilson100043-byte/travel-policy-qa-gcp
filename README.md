@@ -2,7 +2,7 @@
 
 這是**假想企業內部文件問答示範**。使用者在網頁輸入問題，系統從自編的差旅報帳規定找出相關小節，回答並列出文件來源。所有規定、金額、日期及流程都是虛構測試資料
 
-情境設定為約 200 名員工的中小企業：員工以公司帳號登入後提問，Vertex AI 依現行規定生成答案；管理部門上傳新規定後，系統自動重建索引。雲端架構以 Terraform 設計在 GCP 台灣區域，**只做設計與靜態驗證，沒有實際部署**。本機另有離線模式，不需任何帳號即可測試。
+情境設定為約 200 名員工的中小企業：員工以公司帳號登入後提問，Vertex AI 依現行規定生成答案；管理部門上傳或刪除規定後，系統自動重建索引。雲端架構以 Terraform 設計在 GCP 台灣區域，**只做設計與靜態驗證，沒有實際部署**。本機另有離線模式，不需任何帳號即可測試。
 
 ## 快速導覽
 
@@ -23,7 +23,7 @@
 
 - 員工用中文提問並追問，答案附上依據的文件與章節。
 - 只引用目前生效的規定；文件中找不到依據時，明說查無資料。
-- 管理部門上傳規定到 Cloud Storage 後，自動重建索引。
+- 管理部門在 Cloud Storage 上傳、更新或刪除規定後，自動重建索引。
 - 對話只存在瀏覽器，伺服器不保存提問內容。
 - 本機離線模式：不需 API key、不連網，評審可以直接測試完整流程。
 
@@ -60,11 +60,11 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 | ③ 使用者提問 | Cloud Run Service（FastAPI） | 提供網頁與 `/api/ask`；保留 1 個實例避免冷啟動，最多 5 個實例、每個同時處理 10 個請求。 |
 | ② ③ | Vertex AI | Embedding、追問改寫與生成回答；以服務帳號驗證，不需要 API key。 |
 | ② 建立索引 | Cloud Storage | 私人 bucket：`raw/` 放規定，`processed/` 放索引 JSON；開啟版本保留，規定改錯可還原。 |
-| ② 建立索引 | Eventarc、Workflows | 管理部門上傳規定後，自動啟動索引 Job。 |
-| ② 建立索引 | Cloud Run Job | 依 `##` 切分章節、產生向量、寫入索引；跑完即結束。 |
+| ② 建立索引 | Eventarc、Workflows | 管理部門上傳、更新或刪除規定後，自動啟動索引 Job。 |
+| ② 建立索引 | Cloud Run Job | 依 `##` 切分章節、產生向量、寫入索引；跑完即結束。Vertex AI 限流時自動退避重試；多次重建同時進行時，只由讀到最新文件的那次寫入索引。 |
 | ① 建置映像 | Cloud Build、Artifact Registry | 建置並保存容器映像；Job 與 Service 共用同一映像，tag 不可覆寫。 |
 | 維運 | Cloud Monitoring、Cloud Logging | 回應過慢、伺服器錯誤、索引失敗時寄信通知；記錄誰存取系統。 |
-| 基礎設施 | Terraform | 分 `bootstrap` 與 `app` 兩階段建立資源；每個工作負載各用獨立 service account。 |
+| 基礎設施 | Terraform | 分 `bootstrap` 與 `app` 兩階段建立資源；state 存在開啟版本保留的 Cloud Storage bucket，可共用與鎖定；每個工作負載各用獨立 service account。 |
 | 品質檢查 | pytest、GitHub Actions | 測試文件處理、版本過濾、索引快取、Vertex AI 呼叫與 API；CI 另執行 Terraform `fmt` 與 `validate`，不含部署。 |
 
 各元件對應的需求編號與詳細理由見[架構說明](docs/ARCHITECTURE.md)。

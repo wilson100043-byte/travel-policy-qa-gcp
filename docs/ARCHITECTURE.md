@@ -8,7 +8,7 @@
 
 ## 一句話說明
 
-員工以公司帳號登入後提問；Cloud Run 上的 FastAPI 從索引找出現行規定中最相關的章節，交給 Vertex AI 整理成答案並附上來源。管理部門上傳新規定後，系統自動重建索引。
+員工以公司帳號登入後提問；Cloud Run 上的 FastAPI 從索引找出現行規定中最相關的章節，交給 Vertex AI 整理成答案並附上來源。管理部門上傳或刪除規定後，系統自動重建索引。
 
 ## 系統組成
 
@@ -20,18 +20,18 @@
 | AI 模型 | Vertex AI（gemini-3.5-flash-lite、gemini-embedding-001） | 文件與問題的向量、追問改寫、生成回答。 | 以服務帳號驗證，不需要 API key（NFR-9）；只用官方確認可用的模型與區域。 |
 | 文件與索引儲存 | Cloud Storage | `raw/` 放規定文件，`processed/` 放索引 JSON；開啟版本保留（NFR-12）。 | 數百份文件、數千個章節，一個 JSON 讀進記憶體即可，不需向量資料庫（NFR-6）。 |
 | 建立索引 | Cloud Run Job | 切分章節、產生向量、寫入索引。 | 偶爾執行的批次工作，跑完就結束，不佔常駐資源。 |
-| 自動觸發 | Eventarc＋Workflows | 管理部門上傳規定後，自動啟動索引 Job（FR-5、NFR-5）。 | Eventarc 無法直接啟動 Job，官方做法是經由 Workflows。 |
+| 自動觸發 | Eventarc＋Workflows | 管理部門上傳、更新或刪除規定後，自動啟動索引 Job（FR-3、FR-5、NFR-5）。 | Eventarc 無法直接啟動 Job，官方做法是經由 Workflows。 |
 | 建置 | Cloud Build＋Artifact Registry | 建置並保存容器映像，tag 不可覆寫。 | 在雲端建置，結果一致、版本可追溯。 |
 | 監控與稽核 | Cloud Monitoring＋Cloud Logging | 回應過慢、錯誤、索引失敗時通知；記錄誰存取系統（NFR-10、NFR-11）。 | GCP 內建，不需另外架設。 |
-| 基礎設施 | Terraform | 以程式碼定義上述所有資源。 | 可審查、可重建。 |
+| 基礎設施 | Terraform | 以程式碼定義上述所有資源；state 存在 Cloud Storage（GCS backend）。 | 可審查、可重建；多人維護時共用同一份 state，套用期間自動鎖定。 |
 
 ## 三條主要流程
 
 編號與架構圖的 ①②③ 一致。
 
 1. **① 建置映像：** Terraform bootstrap 建立儲存空間與映像庫；以 `gcloud builds submit` 交由 Cloud Build 建置映像；Terraform app 再建立 Service、Job、IAP、自動觸發與告警。
-2. **② 建立索引：** 管理部門上傳規定到 `raw/` → Eventarc 收到上傳事件 → Workflows 確認是 `raw/` 下的 `.md` 檔 → 啟動 Cloud Run Job。Job 讀取文件、依 `##` 切章節、標記生效日期，呼叫 Vertex AI 產生向量，寫入 `processed/index.json`。
-3. **③ 使用者提問：** 員工開啟網址，經 IAP 以公司帳號登入 → FastAPI 讀取索引（依版本號快取）→ 改寫追問、排除失效規定、取最相關的 3 個章節 → Vertex AI 依章節生成答案 → 回傳答案與來源。找不到依據時明說查無資料。
+2. **② 建立索引：** 管理部門上傳或刪除 `raw/` 的規定 → Eventarc 收到上傳（`finalized`）或封存（`archived`）事件 → Workflows 確認是 `raw/` 下的 `.md` 檔；若是封存事件，再確認同名檔案已不存在（刪除），而不是被新版取代 → 啟動 Cloud Run Job。Job 讀取文件、依 `##` 切章節、標記生效日期，呼叫 Vertex AI 產生向量（限流時退避重試），寫入 `processed/index.json`。寫入前會再檢查一次 `raw/`：若重建期間文件又有變動，就不寫入，交給變動觸發的下一次執行，避免舊結果覆蓋新索引。
+3. **③ 使用者提問：** 員工開啟網址，經 IAP 以公司帳號登入 → FastAPI 讀取索引（依版本號快取）→ 改寫追問、排除失效規定、取最相關的 3 個章節 → Vertex AI 依章節生成答案 → 回傳答案與來源。找不到依據時明說查無資料。生效日期以台灣時間（UTC+8）判斷，Cloud Run 本身以 UTC 執行。
 
 ## 容量設計
 

@@ -4,6 +4,7 @@ Local use: python -m app.indexer
 Cloud Run Job: STORAGE_MODE=gcs AI_MODE=vertex ... python -m app.indexer
 """
 
+import hashlib
 import json
 import math
 import re
@@ -11,11 +12,11 @@ from collections import Counter
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from app.config import Settings, load_settings, require_vertex
 from app.documents import Chunk, fingerprint_documents, load_local_documents, parse_document
-from app.vertex import VertexClient
+from app.vertex import INDEXER_MAX_ATTEMPTS, VertexClient
 
 
 SCHEMA_VERSION = 1
@@ -61,7 +62,8 @@ def build_index(chunks: List[Chunk], mode: str, settings: Settings, fingerprint:
         }
         vectors = [_normalized_tfidf(count, result["idf"]) for count in counts]
     elif mode == "vertex":
-        client = VertexClient(settings)  # Checks project and location before the first call.
+        # Checks project and location before the first call; retries rate limits.
+        client = VertexClient(settings, max_attempts=INDEXER_MAX_ATTEMPTS)
         vectors = [
             client.embed(chunk.document + "\n" + chunk.section + "\n" + chunk.text,
                          "RETRIEVAL_DOCUMENT", title=chunk.document + " - " + chunk.section)
@@ -87,21 +89,39 @@ def _require_bucket(settings: Settings) -> str:
     return settings.gcs_bucket
 
 
-def read_source_chunks(settings: Settings) -> List[Chunk]:
-    if settings.storage_mode == "local":
-        return load_local_documents(settings.docs_dir)
-    client = _gcs_client()
+def _raw_blobs(client, settings: Settings) -> list:
     bucket = client.bucket(_require_bucket(settings))
-    blobs = sorted(
+    return sorted(
         (blob for blob in client.list_blobs(bucket, prefix=settings.gcs_raw_prefix) if blob.name.endswith(".md")),
         key=lambda blob: blob.name,
     )
+
+
+def _raw_snapshot(blobs: Iterable) -> str:
+    """Names and generations of the policies one rebuild read; any upload or delete changes it."""
+    digest = hashlib.sha256()
+    for blob in blobs:
+        digest.update("{}\x00{}\x00".format(blob.name, blob.generation).encode("utf-8"))
+    return digest.hexdigest()
+
+
+def read_source_chunks(settings: Settings) -> Tuple[List[Chunk], str]:
+    """Return the policy sections and a fingerprint of the files they came from."""
+    if settings.storage_mode == "local":
+        return load_local_documents(settings.docs_dir), fingerprint_documents(settings.docs_dir) or ""
+    client = _gcs_client()
+    blobs = _raw_blobs(client, settings)
     if not blobs:
         raise FileNotFoundError("no Markdown files in GCS raw prefix")
     chunks = []
     for blob in blobs:
+        # The listed generation pins the download, so the snapshot matches what was read.
         chunks.extend(parse_document(blob.download_as_text(encoding="utf-8"), Path(blob.name).name))
-    return chunks
+    return chunks, _raw_snapshot(blobs)
+
+
+def gcs_source_changed(settings: Settings, fingerprint: str) -> bool:
+    return _raw_snapshot(_raw_blobs(_gcs_client(), settings)) != fingerprint
 
 
 def save_index(index: dict, settings: Settings) -> None:
@@ -171,17 +191,28 @@ def validate_index(index: dict, settings: Settings) -> None:
         raise ValueError("local index is missing IDF data")
 
 
-def create_index(settings: Settings = None) -> dict:
+def create_index(settings: Settings = None) -> Optional[dict]:
+    """Build and save the index; return None when a newer rebuild owns the result.
+
+    Every upload or removal starts its own Job execution, and several can overlap.
+    An execution that started earlier but finishes later must not overwrite the
+    index with an older set of policies, so it checks raw/ again before writing.
+    The change it notices started a newer execution, which writes the index.
+    """
     settings = settings or load_settings()
     if settings.ai_mode == "vertex":
         require_vertex(settings)
-    chunks = read_source_chunks(settings)
-    fingerprint = (fingerprint_documents(settings.docs_dir) or "") if settings.storage_mode == "local" else ""
+    chunks, fingerprint = read_source_chunks(settings)
     index = build_index(chunks, settings.ai_mode, settings, fingerprint)
+    if settings.storage_mode == "gcs" and gcs_source_changed(settings, fingerprint):
+        return None
     save_index(index, settings)
     return index
 
 
 if __name__ == "__main__":
     index = create_index()
-    print("Indexed {} sections in {} mode.".format(len(index["chunks"]), index["mode"]))
+    if index is None:
+        print("Policies changed during this rebuild; skipped writing so the newer run's index is kept.")
+    else:
+        print("Indexed {} sections in {} mode.".format(len(index["chunks"]), index["mode"]))

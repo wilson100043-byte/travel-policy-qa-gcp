@@ -2,7 +2,7 @@
 
 import math
 import re
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
 from app.config import Settings, require_vertex
@@ -10,6 +10,9 @@ from app.vertex import VertexClient
 from app.indexer import grams, load_index, vectorize_query
 
 
+# Effective dates in the policies are Taiwan dates, while Cloud Run runs in UTC.
+# Taiwan has no daylight saving time, so a fixed UTC+8 offset needs no tz database.
+TAIWAN = timezone(timedelta(hours=8))
 NO_ANSWER = "目前生效的報帳規定中，找不到足以回答這個問題的內容。"
 OLD_POLICY = "這個示範只提供目前生效的規定，無法回答舊版規定。"
 # Everyday words such as 以前 or 過去 only signal an old policy when they
@@ -196,13 +199,17 @@ def _unsupported_named_expense(question: str, index: dict, today: date) -> bool:
     )
 
 
+def taiwan_today() -> date:
+    return datetime.now(TAIWAN).date()
+
+
 def ask(question: str, history: list, settings: Settings, today: Optional[date] = None) -> dict:
     question = question.strip()
     if not question:
         raise ValueError("question cannot be empty")
     if OLD_WORDS.search(question) or ("住宿" in question and OLD_LODGING_DATE.search(question)):
         return {"answer": OLD_POLICY, "sources": [], "mode": settings.ai_mode}
-    today = today or date.today()
+    today = today or taiwan_today()
     index = load_index(settings)
     if settings.ai_mode == "local" and _unsupported_named_expense(question, index, today):
         return {"answer": NO_ANSWER, "sources": [], "mode": settings.ai_mode}
